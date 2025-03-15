@@ -1,0 +1,23 @@
+{
+  "name": "chatboot-barbearia",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+     "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
+    "axios": "^1.8.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mysql2": "^3.13.0",
+    "node-emoji": "^2.2.0",
+    "qrcode-terminal": "^0.12.0",
+    "sequelize": "^6.37.6"
+  }
+}
