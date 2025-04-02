@@ -17,8 +17,12 @@ const Agendamento = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    horario: {
+    data: {
       type: DataTypes.DATE,
+      allowNull: false,
+    },
+    horario: {
+      type: DataTypes.TIME,
       allowNull: false,
     },
     servico: {

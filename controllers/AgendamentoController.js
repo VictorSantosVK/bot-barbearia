@@ -1,35 +1,34 @@
-const db = require("../database/connection");
+const Agendamento = require("../models/Agendamento");
 
-try {
-  await criarAgendamento(
-    "Cliente", // Substitua pelo nome real do cliente
-    sender,
-    estadoUsuario.dataEscolhida.dataFormatada, // Passa a data corretamente
-    horarioEscolhido, // Passa o horário corretamente
-    "Corte Agendado"
-  );
-  await sock.sendMessage(sender, {
-    text: `✅ Seu horário foi agendado com sucesso para ${estadoUsuario.dataEscolhida.diaSemana} (${estadoUsuario.dataEscolhida.dataFormatada}) às ${horarioEscolhido}.\nESCREVA "VOLTAR" PARA VOLTAR AO MENU PRINCIPAL`,
-  });
-  estadosUsuarios[sender] = { etapa: "menu" }; // Volta ao menu
-} catch (error) {
-  await sock.sendMessage(sender, {
-    text: `❌ ${error.message}`,
-  });
+async function criarAgendamento(nome_cliente, telefone, horario, servico) {
+  try {
+    const agendamento = await Agendamento.create({
+      nome_cliente,
+      telefone,
+      horario,
+      servico,
+    });
+    return agendamento;
+  } catch (error) {
+    throw new Error("Erro ao criar agendamento: " + error.message);
+  }
 }
 
 async function listarAgendamentos(telefone) {
-  return new Promise((resolve, reject) => {
-    db.query(
-      "SELECT horario FROM agendamentos WHERE telefone = ?",
-      [telefone],
-      (err, results) => {
-        if (err) reject(err);
-        if (results.length === 0) resolve("📅 Nenhum agendamento encontrado.");
-        else resolve(results.map((a) => `🕒 ${a.horario}`).join("\n"));
-      }
-    );
-  });
+  try {
+    const agendamentos = await Agendamento.findAll({
+      where: { telefone },
+      attributes: ["horario"],
+    });
+
+    if (agendamentos.length === 0) {
+      return "📅 Nenhum agendamento encontrado.";
+    }
+
+    return agendamentos.map((a) => `🕒 ${a.horario}`).join("\n");
+  } catch (error) {
+    throw new Error("Erro ao listar agendamentos: " + error.message);
+  }
 }
 
 module.exports = { criarAgendamento, listarAgendamentos };
