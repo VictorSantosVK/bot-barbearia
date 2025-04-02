@@ -13,7 +13,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'usuario', 'senha'] 
 }));
-console.log('Hash da senha:', bcrypt.hashSync('senha123', 8));
+console.log('Hash da senha:', bcrypt.hashSync('xxx', 8));
 // Sincronizar o modelo com o banco de dados
 sequelize.sync({ force: false })
   .then(() => console.log('Banco de dados sincronizado.'))
@@ -22,7 +22,7 @@ sequelize.sync({ force: false })
 // Dados do admin (simulado)
 const admin = {
   usuario: 'admin',
-  senha: bcrypt.hashSync('senha123', 8),
+  senha: bcrypt.hashSync('xxx', 8),
 };
 
 // Rota de login
