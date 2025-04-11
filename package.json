@@ -25,5 +25,8 @@
     "node-emoji": "^2.2.0",
     "qrcode-terminal": "^0.12.0",
     "sequelize": "^6.37.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
   }
 }
