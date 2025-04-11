@@ -7,7 +7,7 @@ const { Op } = require("sequelize"); // Importe os operadores do Sequelize
 // SEU NÚMERO DE TELEFONE COMPLETO (COM CÓDIGO DO PAÍS E ÁREA, SEM O +)
 const adminNumbers = [
   "@s.whatsapp.net", // seu número atual
-  "558192664901@s.whatsapp.net"  // o número antigo
+  "558192664901@s.whatsapp.net"  // o número profissional
 ];
 
 async function handleAdminCommands(sock, sender, text) {
@@ -39,7 +39,6 @@ async function handleAdminCommands(sock, sender, text) {
     }
   };
 
-  // 📌 Menu principal
   if (text === "!admin") {
     await sock.sendMessage(sender, {
       text:
@@ -54,7 +53,6 @@ async function handleAdminCommands(sock, sender, text) {
     });
     return;
   }
-  
 
   switch (true) {
     case text === "1": {
@@ -91,6 +89,13 @@ async function handleAdminCommands(sock, sender, text) {
       break;
     }
 
+    case text === "3": {
+      await sock.sendMessage(sender, {
+        text: "📌 Para cancelar, envie: *!cancelar ID* (ex: !cancelar 123)"
+      });
+      break;
+    }
+
     case /^!cancelar\s+\d+$/.test(text): {
       const id = parseInt(text.split(" ")[1]);
       const agendamento = await Agendamento.findByPk(id);
@@ -105,7 +110,9 @@ async function handleAdminCommands(sock, sender, text) {
     }
 
     case text === "4": {
-      await sock.sendMessage(sender, { text: "🔙 Voltando ao menu principal..." });
+      await sock.sendMessage(sender, {
+        text: "📅 Para buscar agendamentos por data, envie: *!data DD/MM/AAAA* (ex: !data 25/04/2025)"
+      });
       break;
     }
 
@@ -123,7 +130,14 @@ async function handleAdminCommands(sock, sender, text) {
       break;
     }
 
-    case /^!editar\s+\d+\s+\d{2}:\d{2}$/.test(text): {
+    case text === "5": {
+      await sock.sendMessage(sender, {
+        text: "✏️ Para editar, envie: *!editar ID HH:MM* (ex: !editar 123 14:00)"
+      });
+      break;
+    }
+
+    case /^!editar\s+\d+\s+\d{2}:\d{2}(:\d{2})?$/.test(text): {
       const [, idStr, novoHorario] = text.split(" ");
       const id = parseInt(idStr);
       const agendamento = await Agendamento.findByPk(id);
@@ -140,7 +154,7 @@ async function handleAdminCommands(sock, sender, text) {
       break;
     }
 
-    case text === "7": {
+    case text === "6": {
       const agora = ajustarFusoHorario();
       const dataAtual = agora.toISOString().split("T")[0];
 
@@ -154,6 +168,11 @@ async function handleAdminCommands(sock, sender, text) {
       });
 
       await enviarAgendamentos(sender, "📅 *Todos os agendamentos futuros:*", agendamentosFuturos);
+      break;
+    }
+
+    case text === "7": {
+      await sock.sendMessage(sender, { text: "🔙 Voltando ao menu principal..." });
       break;
     }
 
@@ -304,7 +323,7 @@ async function listarAgendamentos(telefoneCliente) {
         `✂️ Serviço: ${agendamento.servico || "Não especificado"}\n\n`;
     });
 
-    resposta += "\n🔹 ESCREVA 'VOLTAR' PARA RETORNAR AO MENU PRINCIPAL";
+   
     return resposta;
   } catch (error) {
     console.error("Erro ao carregar agendamentos:", error);
@@ -528,7 +547,8 @@ console.log("Admins:", adminNumbers);
           console.log("Opção 4 selecionada: Cancelar agendamento");
           const agendamentos = await listarAgendamentos(sender); // Filtra por cliente
           await sock.sendMessage(sender, {
-            text: `${agendamentos}\n\n🔹 Escolha o número do agendamento que deseja cancelar: \n\n ESCREVA "VOLTAR" PARA RETORNAR AO MENU PRINCIPAL`,
+            text: `${agendamentos}🔹 Escolha o número do agendamento que deseja cancelar:  \n\n🔹 ESCREVA 'VOLTAR' PARA RETORNAR AO MENU PRINCIPAL`,
+            
           });
           estadosUsuarios[sender] = {
             ...estadoUsuario,
@@ -700,4 +720,18 @@ console.log("Admins:", adminNumbers);
 }
 
 
-startBot();
+if (require.main === module) {
+  startBot();
+}
+
+module.exports = {
+  handleAdminCommands,
+  horariosPorDia,
+  estadosUsuarios,
+  numeroParaEmoji,
+  obterProximosDias,
+  criarAgendamento,
+  listarAgendamentos,
+  cancelarAgendamento,
+  listarAgendamentosDoDia,
+};
