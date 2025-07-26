@@ -2,7 +2,7 @@ const { makeWASocket, useMultiFileAuthState, DisconnectReason,} = require("@whis
 const { Boom } = require("@hapi/boom");
 const emoji = require("node-emoji");
 const Agendamento = require("../models/Agendamento");
-const { Op } = require("sequelize"); // Importe os operadores do Sequelize
+const { Op } = require("sequelize");
 
 // NÚMERO DE TELEFONE COMPLETO
 const adminNumbers = [
