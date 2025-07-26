@@ -6,8 +6,8 @@ const { Op } = require("sequelize");
 
 // NÚMERO DE TELEFONE COMPLETO
 const adminNumbers = [
-  "@s.whatsapp.net", // seu número atual
-  "558192664901@s.whatsapp.net"  // o número antigo
+  "@s.whatsapp.net", //número atual
+  "558192664901@s.whatsapp.net"  //o número antigo
 ];
 
 
