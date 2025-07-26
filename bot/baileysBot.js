@@ -4,7 +4,7 @@ const emoji = require("node-emoji");
 const Agendamento = require("../models/Agendamento");
 const { Op } = require("sequelize"); // Importe os operadores do Sequelize
 
-// SEU NÚMERO DE TELEFONE COMPLETO (COM CÓDIGO DO PAÍS E ÁREA, SEM O +)
+// NÚMERO DE TELEFONE COMPLETK
 const adminNumbers = [
   "@s.whatsapp.net", // seu número atual
   "558192664901@s.whatsapp.net"  // o número antigo
