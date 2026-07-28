@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Painel Admin — Barbearia JK2</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Libre+Franklin:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- ============================= LOGIN ============================= -->
+  <div id="loginScreen" class="login-page">
+    <section class="login-container">
+      <div class="card">
+        <div class="pole-accent"></div>
+        <div class="login-body">
+          <div class="login-badge">JK2</div>
+          <h2>Painel Admin</h2>
+          <p class="subtitle">Barbearia JK2 · gestão de agendamentos</p>
+
+          <div class="field">
+            <label for="loginUsuario">Usuário</label>
+            <input id="loginUsuario" type="text" placeholder="Digite o usuário" autocomplete="username" />
+          </div>
+
+          <div class="field" style="margin-bottom:6px;">
+            <label for="loginSenha">Senha</label>
+            <input id="loginSenha" type="password" placeholder="Digite a senha" autocomplete="current-password" />
+          </div>
+
+          <button class="btn btn-primary btn-block" onclick="fazerLogin()">Entrar</button>
+          <p id="loginStatus" class="status"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================= APP SHELL ============================= -->
+  <div id="appShell" class="app-shell hidden">
+
+    <div class="sidebar-scrim" id="sidebarScrim" onclick="toggleSidebar(false)"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-badge">JK2</div>
+        <div class="brand-text">
+          <h1>Barbearia JK2</h1>
+          <span>Painel administrativo</span>
+        </div>
+      </div>
+      <div class="pole-accent" style="height:3px;"></div>
+
+      <nav class="sidebar-nav">
+        <p class="nav-eyebrow">Painel</p>
+        <button class="nav-item active" onclick="irPara('secVisaoGeral', this)">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6" rx="1.5"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.5"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.5"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.5"/></svg>
+          Visão geral
+        </button>
+        <button class="nav-item" onclick="irPara('secGraficos', this)">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 16.5V3.5M3 16.5H17M6.5 13V9M10.5 13V6M14.5 13V10.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Relatórios
+        </button>
+        <button class="nav-item" onclick="irPara('secAgenda', this)">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="14" rx="2"/><path d="M2.5 7.5H17.5M6 2v3M14 2v3" stroke-linecap="round"/></svg>
+          Agenda
+        </button>
+        <button class="nav-item" onclick="abrirModalNovo()">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12" stroke-linecap="round"/></svg>
+          Novo agendamento
+        </button>
+
+        <p class="nav-eyebrow">Visão lateral</p>
+        <button class="nav-item" onclick="irPara('secProximos', this)">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Próximos horários
+        </button>
+        <button class="nav-item" onclick="irPara('secServicos', this)">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4l8 8M14 4l-8 8" stroke-linecap="round"/><circle cx="5" cy="4" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg>
+          Serviços
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar" id="avatarIniciais">A</div>
+          <div class="user-meta">
+            <strong id="usuarioLogado">Administrador</strong>
+            <span>Sessão ativa</span>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-block btn-sm" onclick="sair()" style="background:transparent;border-color:rgba(245,241,228,.2);color:var(--text-on-dark-dim);">
+          Sair
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <button class="btn btn-icon btn-ghost sidebar-toggle" onclick="toggleSidebar()">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5h14M3 10h14M3 15h14" stroke-linecap="round"/></svg>
+          </button>
+          <div class="topbar-title">
+            <h2>Visão geral</h2>
+            <p id="dataHojeExtenso">—</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline btn-sm" onclick="carregarTudo()">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 10a6 6 0 11-2-4.47M16 3v4h-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Atualizar
+          </button>
+          <button class="btn btn-brass btn-sm" onclick="abrirModalNovo()">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12" stroke-linecap="round"/></svg>
+            Novo agendamento
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- Notificações -->
+        <section class="notif-bar" id="notifBar"></section>
+
+        <!-- KPIs -->
+        <section id="secVisaoGeral">
+          <div class="kpi-grid" id="kpiGrid">
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Hoje</span>
+                <div class="kpi-icon">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2.5" y="3.5" width="15" height="14" rx="2"/><path d="M2.5 7.5H17.5M6 2v3M14 2v3" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value num" id="metricHoje">0</div>
+              <div id="deltaHoje"></div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Na semana</span>
+                <div class="kpi-icon">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 16.5V3.5M3 16.5H17M6.5 13V9M10.5 13V6M14.5 13V10.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value num" id="metricSemana">0</div>
+              <div id="deltaSemana"></div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Clientes atendidos</span>
+                <div class="kpi-icon">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="7" cy="6.5" r="2.5"/><path d="M2.5 16c.5-3 2-4.5 4.5-4.5S11.5 13 12 16" stroke-linecap="round"/><circle cx="14" cy="7" r="2"/><path d="M13 11c2.2.2 3.4 1.6 3.8 4.2" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value num" id="metricClientes">0</div>
+              <div id="deltaClientes"></div>
+            </div>
+
+            <div class="kpi-card accent">
+              <div class="kpi-top">
+                <span class="kpi-label">Faturamento hoje</span>
+                <div class="kpi-icon">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v7M12.5 8c0-1-1-1.7-2.5-1.7S7.5 7 7.5 8s.9 1.4 2.5 1.7 2.5.8 2.5 1.8-1 1.7-2.5 1.7S7.5 12.5 7.5 11.5" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value num" id="metricFaturamentoHoje">R$ 0,00</div>
+              <div id="deltaFaturamentoHoje"></div>
+            </div>
+
+            <div class="kpi-card accent">
+              <div class="kpi-top">
+                <span class="kpi-label">Faturamento do mês</span>
+                <div class="kpi-icon">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 15l4-5 3 3 6-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 5h3v3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value num" id="metricFaturamentoMes">R$ 0,00</div>
+              <div id="deltaFaturamentoMes"></div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Ticket médio</span>
+                <div class="kpi-icon">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 3.5h9l3 3v10a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1z" stroke-linejoin="round"/><path d="M6.5 8h5M6.5 11h5M6.5 14h3" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value num" id="metricTicketMedio">R$ 0,00</div>
+              <div id="deltaTicketMedio"></div>
+            </div>
+          </div>
+
+          <!-- Estatísticas secundárias (mantêm os totais originais) -->
+          <div class="stat-strip">
+            <div class="stat-chip">
+              <div class="stat-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 2l1.9 4.4L17 7l-3.6 3 1 5-4.4-2.6L5.6 15l1-5L3 7l5.1-.6z" stroke-linejoin="round"/></svg></div>
+              <div><strong class="num" id="metricTotal">0</strong><span>Total histórico de agendamentos</span></div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <div><strong class="num" id="metricFuturos">0</strong><span>Agendamentos futuros na agenda</span></div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4l8 8M14 4l-8 8" stroke-linecap="round"/></svg></div>
+              <div><strong class="num" id="metricCabeloBarba">0</strong><span>Cortes com cabelo e barba</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Gráficos -->
+        <section id="secGraficos" class="charts-grid">
+          <div class="card chart-card">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Financeiro</p>
+                <h3 class="title">Faturamento — últimos 14 dias</h3>
+              </div>
+            </div>
+            <div class="canvas-wrap"><canvas id="chartFaturamento"></canvas></div>
+          </div>
+          <div class="card chart-card">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Movimento</p>
+                <h3 class="title">Agendamentos por dia da semana</h3>
+              </div>
+            </div>
+            <div class="canvas-wrap"><canvas id="chartAgendamentos"></canvas></div>
+          </div>
+        </section>
+
+        <!-- Colunas principais -->
+        <section class="dashboard-columns">
+
+          <!-- Coluna principal: recepção + agenda -->
+          <div class="col-main" style="display:flex; flex-direction:column; gap:16px;">
+
+            <div class="card card-pad" id="secAgenda">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Buscar</p>
+                  <h3 class="title">Filtros</h3>
+                </div>
+              </div>
+              <div class="filters section-gap" style="margin-top:14px;">
+                <div class="field">
+                  <label for="filtroData">Data</label>
+                  <input id="filtroData" type="date" />
+                </div>
+                <div class="field">
+                  <label for="filtroCliente">Cliente</label>
+                  <input id="filtroCliente" type="text" placeholder="Buscar por nome" />
+                </div>
+                <div class="field">
+                  <label for="filtroServico">Serviço</label>
+                  <select id="filtroServico">
+                    <option value="">Todos</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" onclick="carregarAgendamentos()">Filtrar</button>
+                <button class="btn btn-outline" onclick="limparFiltros()">Limpar</button>
+              </div>
+            </div>
+
+            <div class="card card-pad">
+              <div class="card-head" style="margin-bottom: 14px;">
+                <div>
+                  <p class="eyebrow">Agenda</p>
+                  <h3 class="title">Agendamentos</h3>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="carregarTudo()">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 10a6 6 0 11-2-4.47M16 3v4h-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Atualizar
+                </button>
+              </div>
+
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th><th>Cliente</th><th>Telefone</th><th>Data</th><th>Horário</th>
+                      <th>Serviço</th><th>Valor</th><th>Status</th><th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabelaAgendamentos">
+                    <tr><td colspan="9"><div class="skel-line" style="width:90%"></div></td></tr>
+                    <tr><td colspan="9"><div class="skel-line" style="width:70%"></div></td></tr>
+                    <tr><td colspan="9"><div class="skel-line" style="width:80%"></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p id="listaStatus" class="status"></p>
+            </div>
+          </div>
+
+          <!-- Coluna lateral -->
+          <div class="col-side">
+
+            <div class="card card-pad" id="secProximos">
+              <p class="eyebrow">Agora</p>
+              <h3 class="title">Próximos horários</h3>
+              <div id="listaProximos" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="card card-pad" id="secServicos">
+              <p class="eyebrow">Este mês</p>
+              <h3 class="title">Serviços mais vendidos</h3>
+              <div id="listaServicos" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="card card-pad">
+              <p class="eyebrow">Equipe</p>
+              <h3 class="title">Profissionais com maior faturamento</h3>
+              <div id="listaProfissionais" style="margin-top:6px;"></div>
+            </div>
+
+            <div class="card card-pad">
+              <div class="mini-cal-head">
+                <strong id="miniCalMesAno">—</strong>
+                <div class="mini-cal-nav">
+                  <button onclick="mudarMesCalendario(-1)">
+                    <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4l-5 6 5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button onclick="mudarMesCalendario(1)">
+                    <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 4l5 6-5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="mini-cal-grid" id="miniCalGrid"></div>
+            </div>
+
+            <div class="card card-pad">
+              <p class="eyebrow">Histórico</p>
+              <h3 class="title">Últimos concluídos</h3>
+              <div id="listaConcluidos" style="margin-top:10px;"></div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ============================= MODAL: NOVO AGENDAMENTO ============================= -->
+  <div id="modalNovo" class="modal-overlay">
+    <div class="modal">
+      <div class="pole-accent" style="height:4px;"></div>
+      <div class="modal-head">
+        <h2>Novo agendamento</h2>
+        <button class="modal-close" onclick="fecharModalNovo()">
+          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="novoNome">Cliente</label>
+          <input id="novoNome" type="text" placeholder="Nome do cliente" />
+        </div>
+        <div class="field">
+          <label for="novoTelefone">Telefone</label>
+          <input id="novoTelefone" type="text" placeholder="Ex: 5581999999999" />
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="novaData">Data</label>
+            <input id="novaData" type="date" onchange="carregarHorariosLivres()" />
+          </div>
+          <div class="field">
+            <label for="novoHorario">Horário</label>
+            <select id="novoHorario">
+              <option value="">Selecione uma data</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <div style="display:flex; align-items:baseline; justify-content:space-between;">
+            <label for="novoServico" style="margin-bottom:6px;">Serviço</label>
+            <span id="novoServicoPreco" class="mono" style="font-size:12.5px; font-weight:700; color: var(--brass-600);"></span>
+          </div>
+          <select id="novoServico" onchange="atualizarPrecoPreview('novoServico','novoServicoPreco')"></select>
+        </div>
+
+        <p id="novoStatus" class="status"></p>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="fecharModalNovo()">Cancelar</button>
+          <button class="btn btn-success" onclick="criarAgendamento()">Criar agendamento</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= MODAL: EDITAR ============================= -->
+  <div id="modalEditar" class="modal-overlay">
+    <div class="modal">
+      <div class="pole-accent" style="height:4px;"></div>
+      <div class="modal-head">
+        <h2>Editar agendamento</h2>
+        <button class="modal-close" onclick="fecharModal()">
+          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input id="editId" type="hidden" />
+
+        <div class="field">
+          <label for="editNome">Cliente</label>
+          <input id="editNome" type="text" />
+        </div>
+        <div class="field">
+          <label for="editTelefone">Telefone</label>
+          <input id="editTelefone" type="text" />
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="editData">Data</label>
+            <input id="editData" type="date" />
+          </div>
+          <div class="field">
+            <label for="editHorario">Horário</label>
+            <input id="editHorario" type="time" />
+          </div>
+        </div>
+        <div class="field">
+          <div style="display:flex; align-items:baseline; justify-content:space-between;">
+            <label for="editServico" style="margin-bottom:6px;">Serviço</label>
+            <span id="editServicoPreco" class="mono" style="font-size:12.5px; font-weight:700; color: var(--brass-600);"></span>
+          </div>
+          <select id="editServico" onchange="atualizarPrecoPreview('editServico','editServicoPreco')"></select>
+        </div>
+
+        <p id="editStatus" class="status"></p>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+          <button class="btn btn-success" onclick="salvarEdicao()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================
+       CONFIG / AUTH  (lógica original preservada)
+       ========================================================= */
+    const API_URL = "";
+    let agendamentosCompletos = []; // cache não-filtrado, usado nos indicadores
+    let mesCalendarioAtual = new Date();
+
+    /* =========================================================
+       CATÁLOGO DE SERVIÇOS
+       Fonte única para os selects de serviço, o preview de preço
+       nos formulários e as cores dos badges/gráficos.
+       ========================================================= */
+    const SERVICOS = [
+      { nome: "Cabelo",                         preco: 30, badge: "badge-cabelo" },
+      { nome: "Barba",                          preco: 30, badge: "badge-barba" },
+      { nome: "Cabelo e Barba",                 preco: 45, badge: "badge-cabelo-barba" },
+      { nome: "Sobrancelha",                    preco: 10, badge: "badge-sobrancelha" },
+      { nome: "Cabelo e Sobrancelha",           preco: 35, badge: "badge-cabelo-sobrancelha" },
+      { nome: "Cabelo, Barba e Sobrancelha",    preco: 50, badge: "badge-completo" }
+    ];
+
+    function preencherSelectsServicos() {
+      const opcoes = SERVICOS.map(s => `<option value="${s.nome}">${s.nome} — ${formatarPreco(s.preco)}</option>`).join("");
+
+      document.getElementById("novoServico").innerHTML = opcoes;
+      document.getElementById("editServico").innerHTML = opcoes;
+      document.getElementById("filtroServico").innerHTML =
+        `<option value="">Todos</option>` + SERVICOS.map(s => `<option value="${s.nome}">${s.nome}</option>`).join("");
+
+      atualizarPrecoPreview("novoServico", "novoServicoPreco");
+    }
+
+    function atualizarPrecoPreview(idSelect, idPreview) {
+      const nome = document.getElementById(idSelect).value;
+      const servico = SERVICOS.find(s => s.nome === nome);
+      document.getElementById(idPreview).innerText = servico ? formatarPreco(servico.preco) : "";
+    }
+
+    function getToken() { return localStorage.getItem("adminToken"); }
+    function setToken(token) { localStorage.setItem("adminToken", token); }
+    function limparToken() { localStorage.removeItem("adminToken"); }
+    function authHeaders() { return { "Content-Type": "application/json", "Authorization": `Bearer ${getToken()}` }; }
+
+    function mostrarStatus(id, mensagem, tipo = "") {
+      const el = document.getElementById(id);
+      el.innerText = mensagem;
+      el.className = `status ${tipo}`;
+    }
+
+    function formatarDataBR(data) {
+      if (!data) return "--/--/----";
+      const date = new Date(data);
+      if (isNaN(date.getTime())) return "--/--/----";
+      return date.toLocaleDateString("pt-BR");
+    }
+
+    function dataParaInput(data) {
+      if (!data) return "";
+      const date = new Date(data);
+      if (isNaN(date.getTime())) return "";
+      const ano = date.getFullYear();
+      const mes = String(date.getMonth() + 1).padStart(2, "0");
+      const dia = String(date.getDate()).padStart(2, "0");
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    function formatarHorario(horario) {
+      if (!horario) return "--:--";
+      return horario.slice(0, 5);
+    }
+
+    function badgeServico(servico) {
+      const info = SERVICOS.find(s => s.nome === servico);
+      const classe = info ? info.badge : "badge-cabelo";
+      return `<span class="badge ${classe}"><span class="badge-dot"></span>${servico || ""}</span>`;
+    }
+
+    function formatarPreco(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function badgeStatus(concluido) {
+      return concluido
+        ? '<span class="badge badge-status-concluido"><span class="badge-dot"></span>Concluído</span>'
+        : '<span class="badge badge-status-pendente"><span class="badge-dot"></span>Pendente</span>';
+    }
+
+    async function request(url, options = {}) {
+      const resposta = await fetch(url, options);
+      if (resposta.status === 401) {
+        limparToken();
+        mostrarLogin();
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+      let data = null;
+      try { data = await resposta.json(); } catch (error) { data = null; }
+      if (!resposta.ok) throw new Error(data?.error || "Erro na requisição.");
+      return data;
+    }
+
+    function mostrarLogin() {
+      document.getElementById("loginScreen").classList.remove("hidden");
+      document.getElementById("appShell").classList.add("hidden");
+    }
+
+    function mostrarAdmin() {
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("appShell").classList.remove("hidden");
+    }
+
+    async function fazerLogin() {
+      const usuario = document.getElementById("loginUsuario").value.trim();
+      const senha = document.getElementById("loginSenha").value.trim();
+
+      if (!usuario || !senha) {
+        mostrarStatus("loginStatus", "Informe usuário e senha.", "error");
+        return;
+      }
+
+      try {
+        const data = await request("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ usuario, senha })
+        });
+
+        setToken(data.token);
+        document.getElementById("usuarioLogado").innerText = usuario;
+        document.getElementById("avatarIniciais").innerText = usuario.slice(0, 2).toUpperCase();
+
+        mostrarStatus("loginStatus", "Login realizado com sucesso.", "success");
+        mostrarAdmin();
+        await carregarTudo();
+      } catch (error) {
+        mostrarStatus("loginStatus", error.message, "error");
+      }
+    }
+
+    function sair() { limparToken(); mostrarLogin(); }
+
+    async function verificarSessao() {
+      const token = getToken();
+      if (!token) { mostrarLogin(); return; }
+
+      try {
+        await request("/me", { headers: authHeaders() });
+        mostrarAdmin();
+        await carregarTudo();
+      } catch (error) {
+        mostrarLogin();
+      }
+    }
+
+    /* =========================================================
+       DATA DE HOJE (topbar)
+       ========================================================= */
+    function exibirDataHoje() {
+      const hoje = new Date();
+      const texto = hoje.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+      document.getElementById("dataHojeExtenso").innerText = texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    /* =========================================================
+       NAVEGAÇÃO LATERAL
+       ========================================================= */
+    function irPara(id, botao) {
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+      if (botao) botao.classList.add("active");
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (window.innerWidth <= 860) toggleSidebar(false);
+    }
+
+    function toggleSidebar(force) {
+      const sb = document.getElementById("sidebar");
+      const scrim = document.getElementById("sidebarScrim");
+      const aberto = typeof force === "boolean" ? force : !sb.classList.contains("open");
+      sb.classList.toggle("open", aberto);
+      scrim.classList.toggle("show", aberto);
+    }
+
+    /* =========================================================
+       DASHBOARD (endpoint original)
+       ========================================================= */
+    async function carregarDashboard() {
+      try {
+        const data = await request("/dashboard", { headers: authHeaders() });
+
+        document.getElementById("metricTotal").innerText = data.totalAgendamentos || 0;
+        document.getElementById("metricHoje").innerText = data.agendamentosHoje || 0;
+        document.getElementById("metricFuturos").innerText = data.futuros || 0;
+        document.getElementById("metricCabeloBarba").innerText = data.servicos?.cabeloBarba || 0;
+
+        document.getElementById("metricFaturamentoHoje").innerText = formatarPreco(data.faturamento?.hoje);
+        document.getElementById("metricFaturamentoMes").innerText = formatarPreco(data.faturamento?.mes);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function carregarHorariosLivres() {
+      const data = document.getElementById("novaData").value;
+      const select = document.getElementById("novoHorario");
+      select.innerHTML = "";
+
+      if (!data) { select.innerHTML = '<option value="">Selecione uma data</option>'; return; }
+
+      try {
+        const resultado = await request(`/horarios-disponiveis?data=${data}`, { headers: authHeaders() });
+        if (!resultado.horariosLivres || resultado.horariosLivres.length === 0) {
+          select.innerHTML = '<option value="">Nenhum horário livre</option>';
+          return;
+        }
+        resultado.horariosLivres.forEach((horario) => {
+          const option = document.createElement("option");
+          option.value = horario;
+          option.innerText = horario;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        select.innerHTML = '<option value="">Erro ao carregar horários</option>';
+      }
+    }
+
+    async function criarAgendamento() {
+      const nome_cliente = document.getElementById("novoNome").value.trim();
+      const telefone = document.getElementById("novoTelefone").value.trim();
+      const data = document.getElementById("novaData").value;
+      const horario = document.getElementById("novoHorario").value;
+      const servico = document.getElementById("novoServico").value;
+
+      if (!nome_cliente || !telefone || !data || !horario || !servico) {
+        mostrarStatus("novoStatus", "Preencha todos os campos.", "error");
+        return;
+      }
+
+      try {
+        await request("/agendamentos", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ nome_cliente, telefone, data, horario, servico })
+        });
+
+        mostrarStatus("novoStatus", "Agendamento criado com sucesso.", "success");
+
+        document.getElementById("novoNome").value = "";
+        document.getElementById("novoTelefone").value = "";
+        document.getElementById("novaData").value = "";
+        document.getElementById("novoHorario").innerHTML = '<option value="">Selecione uma data</option>';
+        document.getElementById("novoServico").value = SERVICOS[0].nome;
+        atualizarPrecoPreview("novoServico", "novoServicoPreco");
+
+        await carregarTudo();
+        setTimeout(fecharModalNovo, 700);
+      } catch (error) {
+        mostrarStatus("novoStatus", error.message, "error");
+      }
+    }
+
+    function abrirModalNovo() { document.getElementById("modalNovo").classList.add("open"); }
+    function fecharModalNovo() {
+      document.getElementById("modalNovo").classList.remove("open");
+      mostrarStatus("novoStatus", "", "");
+    }
+
+    function montarQueryFiltros() {
+      const params = new URLSearchParams();
+      const data = document.getElementById("filtroData").value;
+      const cliente = document.getElementById("filtroCliente").value.trim();
+      const servico = document.getElementById("filtroServico").value;
+      if (data) params.append("data", data);
+      if (cliente) params.append("cliente", cliente);
+      if (servico) params.append("servico", servico);
+      const query = params.toString();
+      return query ? `?${query}` : "";
+    }
+
+    async function carregarAgendamentos() {
+      const tbody = document.getElementById("tabelaAgendamentos");
+      tbody.innerHTML = `
+        <tr><td colspan="9"><div class="skel-line" style="width:90%"></div></td></tr>
+        <tr><td colspan="9"><div class="skel-line" style="width:70%"></div></td></tr>
+        <tr><td colspan="9"><div class="skel-line" style="width:80%"></div></td></tr>`;
+
+      try {
+        const query = montarQueryFiltros();
+        const agendamentos = await request(`/agendamentos${query}`, { headers: authHeaders() });
+
+        tbody.innerHTML = "";
+
+        if (!agendamentos || agendamentos.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="9">
+            <div class="empty-state" style="padding:24px 0;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="3.5" width="15" height="14" rx="2"/><path d="M2.5 7.5H17.5M6 2v3M14 2v3"/></svg>
+              <strong>Nenhum agendamento encontrado</strong>
+              <p>Ajuste os filtros ou crie um novo agendamento.</p>
+            </div></td></tr>`;
+        } else {
+          agendamentos.forEach((ag) => {
+            const tr = document.createElement("tr");
+            const botaoStatus = ag.concluido
+              ? `<button class="btn btn-outline btn-sm" onclick="marcarConcluido(${ag.id}, false)">Reabrir</button>`
+              : `<button class="btn btn-success btn-sm" onclick="marcarConcluido(${ag.id}, true)">Concluir</button>`;
+
+            tr.innerHTML = `
+              <td class="mono">#${ag.id}</td>
+              <td>${ag.nome_cliente || ""}</td>
+              <td class="mono">${ag.telefone || ""}</td>
+              <td>${formatarDataBR(ag.data)}</td>
+              <td class="mono">${formatarHorario(ag.horario)}</td>
+              <td>${badgeServico(ag.servico)}</td>
+              <td class="mono">${formatarPreco(ag.preco_servico)}</td>
+              <td>${badgeStatus(ag.concluido)}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn btn-outline btn-sm" onclick='abrirModal(${JSON.stringify(ag)})'>Editar</button>
+                  ${botaoStatus}
+                  <button class="btn btn-danger btn-sm" onclick="deletarAgendamento(${ag.id})">Cancelar</button>
+                </div>
+              </td>`;
+            tbody.appendChild(tr);
+          });
+        }
+
+        mostrarStatus("listaStatus", "", "");
+
+        // Sem filtros ativos, este mesmo resultado alimenta os indicadores.
+        if (!query) {
+          agendamentosCompletos = agendamentos || [];
+          atualizarIndicadoresAvancados();
+        }
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="9">Erro ao carregar agendamentos.</td></tr>`;
+        mostrarStatus("listaStatus", error.message, "error");
+      }
+    }
+
+    async function deletarAgendamento(id) {
+      const confirmar = confirm(`Deseja realmente cancelar o agendamento #${id}?`);
+      if (!confirmar) return;
+      try {
+        await request(`/agendamentos/${id}`, { method: "DELETE", headers: authHeaders() });
+        await carregarTudo();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function marcarConcluido(id, concluido) {
+      try {
+        await request(`/agendamentos/${id}/concluir`, {
+          method: "PATCH", headers: authHeaders(), body: JSON.stringify({ concluido })
+        });
+        await carregarTudo();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function abrirModal(agendamento) {
+      document.getElementById("editId").value = agendamento.id;
+      document.getElementById("editNome").value = agendamento.nome_cliente || "";
+      document.getElementById("editTelefone").value = agendamento.telefone || "";
+      document.getElementById("editData").value = dataParaInput(agendamento.data);
+      document.getElementById("editHorario").value = formatarHorario(agendamento.horario);
+      document.getElementById("editServico").value = agendamento.servico || SERVICOS[0].nome;
+      atualizarPrecoPreview("editServico", "editServicoPreco");
+      document.getElementById("editStatus").innerText = "";
+      document.getElementById("modalEditar").classList.add("open");
+    }
+
+    function fecharModal() { document.getElementById("modalEditar").classList.remove("open"); }
+
+    async function salvarEdicao() {
+      const id = document.getElementById("editId").value;
+      const nome_cliente = document.getElementById("editNome").value.trim();
+      const telefone = document.getElementById("editTelefone").value.trim();
+      const data = document.getElementById("editData").value;
+      const horario = document.getElementById("editHorario").value;
+      const servico = document.getElementById("editServico").value;
+
+      if (!nome_cliente || !telefone || !data || !horario || !servico) {
+        mostrarStatus("editStatus", "Preencha todos os campos.", "error");
+        return;
+      }
+
+      try {
+        await request(`/agendamentos/${id}`, {
+          method: "PUT", headers: authHeaders(),
+          body: JSON.stringify({ nome_cliente, telefone, data, horario, servico })
+        });
+        mostrarStatus("editStatus", "Agendamento atualizado com sucesso.", "success");
+        fecharModal();
+        await carregarTudo();
+      } catch (error) {
+        mostrarStatus("editStatus", error.message, "error");
+      }
+    }
+
+    function limparFiltros() {
+      document.getElementById("filtroData").value = "";
+      document.getElementById("filtroCliente").value = "";
+      document.getElementById("filtroServico").value = "";
+      carregarAgendamentos();
+    }
+
+    async function carregarTudo() {
+      exibirDataHoje();
+      await carregarDashboard();
+      await carregarAgendamentos();
+    }
+
+    /* =========================================================
+       INDICADORES AVANÇADOS
+       Tudo calculado a partir da lista completa (sem filtros)
+       já carregada — nenhuma chamada extra ao backend, nenhum
+       dado inventado.
+       ========================================================= */
+    function dataHoraCompleta(ag) {
+      const d = new Date(ag.data);
+      if (ag.horario) {
+        const [h, m] = ag.horario.split(":");
+        d.setHours(Number(h) || 0, Number(m) || 0, 0, 0);
+      }
+      return d;
+    }
+
+    function apenasData(d) {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    }
+
+    function noIntervalo(data, inicio, fim) {
+      const d = apenasData(data).getTime();
+      return d >= apenasData(inicio).getTime() && d <= apenasData(fim).getTime();
+    }
+
+    function calcularDelta(atual, anterior) {
+      if (!anterior) return atual > 0 ? { novo: true } : { flat: true };
+      const pct = ((atual - anterior) / anterior) * 100;
+      return { pct, up: pct >= 0 };
+    }
+
+    function renderDelta(alvoId, deltaInfo, rotulo) {
+      const el = document.getElementById(alvoId);
+      if (!el) return;
+      if (deltaInfo.flat) {
+        el.innerHTML = `<span class="kpi-delta flat">— <span class="kpi-delta-label">${rotulo}</span></span>`;
+        return;
+      }
+      if (deltaInfo.novo) {
+        el.innerHTML = `<span class="kpi-delta up">novo <span class="kpi-delta-label">${rotulo}</span></span>`;
+        return;
+      }
+      const seta = deltaInfo.up
+        ? `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+        : `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 8l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const classe = deltaInfo.up ? "up" : "down";
+      el.innerHTML = `<span class="kpi-delta ${classe}">${seta}${Math.abs(deltaInfo.pct).toFixed(0)}%<span class="kpi-delta-label">${rotulo}</span></span>`;
+    }
+
+    function atualizarIndicadoresAvancados() {
+      const lista = agendamentosCompletos;
+      const hoje = apenasData(new Date());
+      const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+
+      const inicioSemana = new Date(hoje); inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+      const fimSemana = new Date(inicioSemana); fimSemana.setDate(inicioSemana.getDate() + 6);
+      const inicioSemanaAnt = new Date(inicioSemana); inicioSemanaAnt.setDate(inicioSemana.getDate() - 7);
+      const fimSemanaAnt = new Date(inicioSemana); fimSemanaAnt.setDate(inicioSemana.getDate() - 1);
+
+      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+      const inicioMesAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+      const fimMesAnt = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+
+      // --- Agendamentos hoje / ontem ---
+      const hojeCount = lista.filter(a => noIntervalo(a.data, hoje, hoje)).length;
+      const ontemCount = lista.filter(a => noIntervalo(a.data, ontem, ontem)).length;
+      document.getElementById("metricHoje").innerText = hojeCount;
+      renderDelta("deltaHoje", calcularDelta(hojeCount, ontemCount), "vs. ontem");
+
+      // --- Semana atual / anterior ---
+      const semanaCount = lista.filter(a => noIntervalo(a.data, inicioSemana, fimSemana)).length;
+      const semanaAntCount = lista.filter(a => noIntervalo(a.data, inicioSemanaAnt, fimSemanaAnt)).length;
+      document.getElementById("metricSemana").innerText = semanaCount;
+      renderDelta("deltaSemana", calcularDelta(semanaCount, semanaAntCount), "vs. semana passada");
+
+      // --- Clientes atendidos (mês) ---
+      const chave = a => `${(a.telefone || "").trim()}|${(a.nome_cliente || "").trim().toLowerCase()}`;
+      const clientesMes = new Set(lista.filter(a => a.concluido && noIntervalo(a.data, inicioMes, fimMes)).map(chave)).size;
+      const clientesMesAnt = new Set(lista.filter(a => a.concluido && noIntervalo(a.data, inicioMesAnt, fimMesAnt)).map(chave)).size;
+      document.getElementById("metricClientes").innerText = clientesMes;
+      renderDelta("deltaClientes", calcularDelta(clientesMes, clientesMesAnt), "vs. mês passado");
+
+      // --- Faturamento hoje / ontem ---
+      const somaPeriodo = (ini, fim) => lista.filter(a => noIntervalo(a.data, ini, fim)).reduce((s, a) => s + Number(a.preco_servico || 0), 0);
+      const fatHoje = somaPeriodo(hoje, hoje);
+      const fatOntem = somaPeriodo(ontem, ontem);
+      document.getElementById("metricFaturamentoHoje").innerText = formatarPreco(fatHoje);
+      renderDelta("deltaFaturamentoHoje", calcularDelta(fatHoje, fatOntem), "vs. ontem");
+
+      // --- Faturamento mês / mês anterior ---
+      const fatMes = somaPeriodo(inicioMes, fimMes);
+      const fatMesAnt = somaPeriodo(inicioMesAnt, fimMesAnt);
+      document.getElementById("metricFaturamentoMes").innerText = formatarPreco(fatMes);
+      renderDelta("deltaFaturamentoMes", calcularDelta(fatMes, fatMesAnt), "vs. mês passado");
+
+      // --- Ticket médio (mês / mês anterior) ---
+      const qtdMes = lista.filter(a => noIntervalo(a.data, inicioMes, fimMes)).length;
+      const qtdMesAnt = lista.filter(a => noIntervalo(a.data, inicioMesAnt, fimMesAnt)).length;
+      const ticketMes = qtdMes ? fatMes / qtdMes : 0;
+      const ticketMesAnt = qtdMesAnt ? fatMesAnt / qtdMesAnt : 0;
+      document.getElementById("metricTicketMedio").innerText = formatarPreco(ticketMes);
+      renderDelta("deltaTicketMedio", calcularDelta(ticketMes, ticketMesAnt), "vs. mês passado");
+
+      renderServicosMaisVendidos(lista, inicioMes, fimMes);
+      renderProfissionais();
+      renderProximosHorarios(lista);
+      renderUltimosConcluidos(lista);
+      renderNotificacoes(lista, hojeCount);
+      renderGraficoFaturamento(lista, hoje);
+      renderGraficoAgendamentos(lista, inicioMes, fimMes);
+      renderMiniCalendario(lista);
+    }
+
+    /* --- Serviços mais vendidos --- */
+    function renderServicosMaisVendidos(lista, inicioMes, fimMes) {
+      const doMes = lista.filter(a => noIntervalo(a.data, inicioMes, fimMes));
+      const grupos = {};
+      doMes.forEach(a => {
+        const nome = a.servico || "Outro";
+        if (!grupos[nome]) grupos[nome] = { qtd: 0, receita: 0 };
+        grupos[nome].qtd += 1;
+        grupos[nome].receita += Number(a.preco_servico || 0);
+      });
+
+      const container = document.getElementById("listaServicos");
+      const chaves = Object.keys(grupos);
+
+      if (chaves.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:16px 0;">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 4l8 8M14 4l-8 8"/></svg>
+            <strong>Sem vendas este mês</strong>
+            <p>Assim que houver agendamentos, os serviços mais vendidos aparecem aqui.</p>
+          </div>`;
+        return;
+      }
+
+      const totalQtd = chaves.reduce((s, k) => s + grupos[k].qtd, 0);
+      const cores = ["brass", "blue", "red", "green", "amber", "ink"];
+      container.innerHTML = chaves
+        .sort((a, b) => grupos[b].qtd - grupos[a].qtd)
+        .map((nome, i) => {
+          const g = grupos[nome];
+          const pct = totalQtd ? Math.round((g.qtd / totalQtd) * 100) : 0;
+          return `
+            <div class="progress-row">
+              <div class="progress-head">
+                <strong>${nome}</strong>
+                <span>${g.qtd} · ${formatarPreco(g.receita)}</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill ${cores[i % cores.length]}" style="width:${pct}%"></div></div>
+            </div>`;
+        }).join("");
+    }
+
+    /* --- Profissionais (estado vazio honesto: não há esse dado no cadastro) --- */
+    function renderProfissionais() {
+      document.getElementById("listaProfissionais").innerHTML = `
+        <div class="empty-state" style="padding:10px 0 4px;">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="6.5" r="2.5"/><path d="M2.5 16c.5-3 2-4.5 4.5-4.5S11.5 13 12 16"/><circle cx="14" cy="7" r="2"/><path d="M13 11c2.2.2 3.4 1.6 3.8 4.2"/></svg>
+          <strong>Nenhum profissional cadastrado</strong>
+          <p>Cadastre os profissionais da equipe para acompanhar o faturamento por barbeiro.</p>
+        </div>`;
+    }
+
+    /* --- Próximos horários --- */
+    function renderProximosHorarios(lista) {
+      const agora = new Date();
+      const proximos = lista
+        .filter(a => !a.concluido && dataHoraCompleta(a) >= agora)
+        .sort((a, b) => dataHoraCompleta(a) - dataHoraCompleta(b))
+        .slice(0, 5);
+
+      const container = document.getElementById("listaProximos");
+      if (proximos.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:16px 0;">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg>
+            <strong>Nenhum horário à frente</strong>
+            <p>Novos agendamentos aparecem aqui assim que forem criados.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = proximos.map(a => `
+        <div class="list-item">
+          <div class="list-time mono">${formatarHorario(a.horario)}</div>
+          <div class="list-avatar">${(a.nome_cliente || "?").trim().slice(0, 2).toUpperCase()}</div>
+          <div class="list-meta">
+            <strong>${a.nome_cliente || ""}</strong>
+            <span>${formatarDataBR(a.data)} · ${a.servico || ""}</span>
+          </div>
+          <div class="list-value">${formatarPreco(a.preco_servico)}</div>
+        </div>`).join("");
+    }
+
+    /* --- Últimos concluídos --- */
+    function renderUltimosConcluidos(lista) {
+      const concluidos = lista
+        .filter(a => a.concluido)
+        .sort((a, b) => dataHoraCompleta(b) - dataHoraCompleta(a))
+        .slice(0, 5);
+
+      const container = document.getElementById("listaConcluidos");
+      if (concluidos.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:16px 0;">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 10.5l3.5 3.5L16 6"/></svg>
+            <strong>Nenhum atendimento concluído</strong>
+            <p>Marque agendamentos como concluídos para vê-los aqui.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = concluidos.map(a => `
+        <div class="list-item">
+          <div class="list-avatar" style="background:var(--green-100); color:var(--green-600);">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10.5l3.5 3.5L16 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="list-meta">
+            <strong>${a.nome_cliente || ""}</strong>
+            <span>${formatarDataBR(a.data)} · ${a.servico || ""}</span>
+          </div>
+          <div class="list-value">${formatarPreco(a.preco_servico)}</div>
+        </div>`).join("");
+    }
+
+    /* --- Notificações --- */
+    function renderNotificacoes(lista, hojeCount) {
+      const container = document.getElementById("notifBar");
+      const notificacoes = [];
+      const agora = new Date();
+
+      const pendentesHoje = lista.filter(a => !a.concluido && noIntervalo(a.data, agora, agora)).length;
+      if (pendentesHoje > 0) {
+        notificacoes.push({ tipo: "amber", texto: `Você tem ${pendentesHoje} agendamento${pendentesHoje > 1 ? "s" : ""} pendente${pendentesHoje > 1 ? "s" : ""} para hoje.` });
+      }
+
+      const proximo = lista
+        .filter(a => !a.concluido && dataHoraCompleta(a) >= agora)
+        .sort((a, b) => dataHoraCompleta(a) - dataHoraCompleta(b))[0];
+
+      if (proximo) {
+        const minutos = Math.round((dataHoraCompleta(proximo) - agora) / 60000);
+        if (minutos <= 60) {
+          notificacoes.push({ tipo: "info", texto: `Próximo cliente em ${minutos <= 0 ? "instantes" : minutos + " min"}: ${proximo.nome_cliente || "cliente"}.` });
+        }
+      }
+
+      if (hojeCount === 0) {
+        notificacoes.push({ tipo: "info", texto: "Nenhum agendamento marcado para hoje." });
+      }
+
+      if (notificacoes.length === 0) { container.innerHTML = ""; return; }
+
+      container.innerHTML = notificacoes.map((n, i) => `
+        <div class="notif ${n.tipo === "info" ? "info" : ""}">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 3a5 5 0 00-5 5v2.5L3.5 13h13L15 10.5V8a5 5 0 00-5-5z" stroke-linejoin="round"/><path d="M8.3 16a1.8 1.8 0 003.4 0" stroke-linecap="round"/></svg>
+          <span>${n.texto}</span>
+          <button class="notif-close" onclick="this.parentElement.remove()">
+            <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/></svg>
+          </button>
+        </div>`).join("");
+    }
+
+    /* =========================================================
+       GRÁFICOS (Chart.js)
+       ========================================================= */
+    let chartFaturamentoRef = null;
+    let chartAgendamentosRef = null;
+
+    function renderGraficoFaturamento(lista, hoje) {
+      const canvas = document.getElementById("chartFaturamento");
+      if (typeof Chart === "undefined" || !canvas) return;
+
+      const labels = [];
+      const valores = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(hoje); d.setDate(hoje.getDate() - i);
+        labels.push(d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }));
+        const soma = lista.filter(a => noIntervalo(a.data, d, d)).reduce((s, a) => s + Number(a.preco_servico || 0), 0);
+        valores.push(soma);
+      }
+
+      if (chartFaturamentoRef) chartFaturamentoRef.destroy();
+      chartFaturamentoRef = new Chart(canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            data: valores,
+            borderColor: "#B8862C",
+            backgroundColor: "rgba(184,134,44,0.12)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => formatarPreco(ctx.parsed.y) } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: "#A79A85", font: { size: 10.5 } } },
+            y: { grid: { color: "#EFEBE0" }, ticks: { color: "#A79A85", font: { size: 10.5 }, callback: (v) => "R$ " + v } }
+          }
+        }
+      });
+    }
+
+    function renderGraficoAgendamentos(lista, inicioMes, fimMes) {
+      const canvas = document.getElementById("chartAgendamentos");
+      if (typeof Chart === "undefined" || !canvas) return;
+
+      const dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      const contagem = [0, 0, 0, 0, 0, 0, 0];
+      lista.filter(a => noIntervalo(a.data, inicioMes, fimMes)).forEach(a => {
+        const d = new Date(a.data);
+        if (!isNaN(d.getTime())) contagem[d.getDay()] += 1;
+      });
+
+      if (chartAgendamentosRef) chartAgendamentosRef.destroy();
+      chartAgendamentosRef = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: dias,
+          datasets: [{
+            data: contagem,
+            backgroundColor: "#1C1712",
+            borderRadius: 5,
+            maxBarThickness: 30
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ctx.parsed.y + " agendamento(s)" } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: "#A79A85", font: { size: 10.5 } } },
+            y: { grid: { color: "#EFEBE0" }, ticks: { color: "#A79A85", font: { size: 10.5 }, precision: 0 } }
+          }
+        }
+      });
+    }
+
+    /* =========================================================
+       MINI CALENDÁRIO
+       ========================================================= */
+    function mudarMesCalendario(delta) {
+      mesCalendarioAtual.setMonth(mesCalendarioAtual.getMonth() + delta);
+      renderMiniCalendario(agendamentosCompletos);
+    }
+
+    function renderMiniCalendario(lista) {
+      const ref = mesCalendarioAtual;
+      const ano = ref.getFullYear();
+      const mes = ref.getMonth();
+
+      const nomeMes = ref.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+      document.getElementById("miniCalMesAno").innerText = nomeMes;
+
+      const contagemPorDia = {};
+      lista.forEach(a => {
+        const d = new Date(a.data);
+        if (!isNaN(d.getTime()) && d.getFullYear() === ano && d.getMonth() === mes) {
+          const dia = d.getDate();
+          contagemPorDia[dia] = (contagemPorDia[dia] || 0) + 1;
+        }
+      });
+
+      const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+      const totalDias = new Date(ano, mes + 1, 0).getDate();
+      const hoje = new Date();
+      const ehMesAtual = hoje.getFullYear() === ano && hoje.getMonth() === mes;
+
+      const dows = ["D", "S", "T", "Q", "Q", "S", "S"];
+      let html = dows.map(d => `<div class="mini-cal-dow">${d}</div>`).join("");
+
+      for (let i = 0; i < primeiroDiaSemana; i++) html += `<div class="mini-cal-day pad"></div>`;
+
+      for (let dia = 1; dia <= totalDias; dia++) {
+        const temDados = contagemPorDia[dia] > 0;
+        const isHoje = ehMesAtual && hoje.getDate() === dia;
+        const dataISO = `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+        html += `
+          <div class="mini-cal-day ${temDados ? "has-data" : ""} ${isHoje ? "today" : ""}" onclick="filtrarPorDiaCalendario('${dataISO}')" title="${temDados ? contagemPorDia[dia] + " agendamento(s)" : "Sem agendamentos"}">
+            <span>${dia}</span>
+            ${temDados ? '<span class="dot"></span>' : ""}
+          </div>`;
+      }
+
+      document.getElementById("miniCalGrid").innerHTML = html;
+    }
+
+    function filtrarPorDiaCalendario(dataISO) {
+      document.getElementById("filtroData").value = dataISO;
+      carregarAgendamentos();
+      document.getElementById("secAgenda").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    /* =========================================================
+       ATALHOS DE TECLADO / INICIALIZAÇÃO
+       ========================================================= */
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { fecharModal(); fecharModalNovo(); }
+
+      if (event.key === "Enter") {
+        const loginVisivel = !document.getElementById("loginScreen").classList.contains("hidden");
+        if (loginVisivel) fazerLogin();
+      }
+    });
+
+    [document.getElementById("modalEditar"), document.getElementById("modalNovo")].forEach(overlay => {
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+    });
+
+    mesCalendarioAtual = new Date();
+    preencherSelectsServicos();
+    verificarSessao();
+  </script>
+</body>
+</html>
