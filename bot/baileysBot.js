@@ -1149,10 +1149,12 @@ async function startBot() {
 
   const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
-  const sock = makeWASocket({
-    auth: state,
-  });
-
+const sock = makeWASocket({
+  auth: state,
+  browser: ["Ubuntu", "Chrome", "120.0.0"],
+  markOnlineOnConnect: false,
+  syncFullHistory: false,
+});
   sock.ev.on("creds.update", saveCreds);
 
   sock.ev.on("connection.update", (update) => {
