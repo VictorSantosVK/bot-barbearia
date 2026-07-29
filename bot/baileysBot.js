@@ -3,6 +3,7 @@ const path = require("path");
 const {
   makeWASocket,
   useMultiFileAuthState,
+  fetchLatestBaileysVersion,
   DisconnectReason,
 } = require("@whiskeysockets/baileys");
 
@@ -1147,10 +1148,20 @@ async function processarMensagemCliente(sock, sender, text) {
 async function startBot() {
   const authPath = path.join(__dirname, "../baileys_auth_info");
 
-  const { state, saveCreds } = await useMultiFileAuthState(authPath);
+ const { state, saveCreds } = await useMultiFileAuthState(authPath);
+
+const { version, isLatest } = await fetchLatestBaileysVersion();
+
+console.log(
+  "Versão WhatsApp Web usada pelo Baileys:",
+  version,
+  "| Mais recente:",
+  isLatest
+);
 
 const sock = makeWASocket({
   auth: state,
+  version,
   browser: ["Ubuntu", "Chrome", "120.0.0"],
   markOnlineOnConnect: false,
   syncFullHistory: false,
