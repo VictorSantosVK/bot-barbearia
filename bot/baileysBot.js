@@ -13,10 +13,7 @@ const Agendamento = require("../models/Agendamento");
 const { Op } = require("sequelize");
 
 // SEU NÚMERO DE TELEFONE COMPLETO COM CÓDIGO DO PAÍS E ÁREA, SEM O +
-const adminNumbers = [
-  "@s.whatsapp.net",
-  "558192664901@s.whatsapp.net",
-];
+const adminNumbers = ["@s.whatsapp.net", "558192664901@s.whatsapp.net"];
 
 // Serviços disponíveis
 const servicosDisponiveis = [
@@ -217,7 +214,7 @@ function numeroParaEmoji(numero) {
 function montarMenuPrincipal(nome = "") {
   const saudacao = nome
     ? `💈 Olá, ${nome}! Bem-vindo à Barbearia Oficina do Homem. 💈`
-    : "💈 Olá, somos a Barbearia Oficina do Homem! 💈";
+    : "💈 Olá, somos a Barbearia JK2! 💈";
 
   return (
     `${saudacao}\n` +
@@ -234,7 +231,7 @@ function montarMenuServicos() {
 
   servicosDisponiveis.forEach((servico) => {
     resposta += `${numeroParaEmoji(servico.id)} ${servico.nome} - ${formatarPreco(
-      servico.preco
+      servico.preco,
     )}\n`;
   });
 
@@ -352,12 +349,12 @@ async function obterHorariosDisponiveis(dataEscolhida) {
 
   const inicioDia = criarDataLocalPorDataAmericana(
     dataEscolhida.dataAmericana,
-    "00:00"
+    "00:00",
   );
 
   const fimDia = criarDataLocalPorDataAmericana(
     dataEscolhida.dataAmericana,
-    "23:59"
+    "23:59",
   );
 
   const agendamentosDoDia = await Agendamento.findAll({
@@ -370,7 +367,7 @@ async function obterHorariosDisponiveis(dataEscolhida) {
   });
 
   const horariosAgendados = agendamentosDoDia.map((agendamento) =>
-    formatarHorarioVisual(agendamento.horario)
+    formatarHorarioVisual(agendamento.horario),
   );
 
   const agora = new Date();
@@ -384,7 +381,7 @@ async function obterHorariosDisponiveis(dataEscolhida) {
 
     const dataHorario = criarDataLocalPorDataAmericana(
       dataEscolhida.dataAmericana,
-      horario
+      horario,
     );
 
     const horarioJaPassou = dataHorario <= agora;
@@ -406,7 +403,7 @@ async function criarAgendamento(
   dataBrasileira,
   horario,
   servico,
-  precoServico
+  precoServico,
 ) {
   try {
     const [dia, mes, ano] = dataBrasileira.split("/");
@@ -537,7 +534,7 @@ async function listarAgendamentosDoDia() {
       0,
       0,
       0,
-      0
+      0,
     );
 
     const fimDoDia = new Date(
@@ -547,7 +544,7 @@ async function listarAgendamentosDoDia() {
       23,
       59,
       59,
-      999
+      999,
     );
 
     const agendamentos = await Agendamento.findAll({
@@ -638,7 +635,7 @@ async function handleAdminCommands(sock, sender, text) {
         0,
         0,
         0,
-        0
+        0,
       );
 
       const fim = new Date(
@@ -648,7 +645,7 @@ async function handleAdminCommands(sock, sender, text) {
         23,
         59,
         59,
-        999
+        999,
       );
 
       const agendamentosHoje = await Agendamento.findAll({
@@ -666,7 +663,7 @@ async function handleAdminCommands(sock, sender, text) {
       await enviarAgendamentos(
         sender,
         "📅 *Agendamentos de hoje:*",
-        agendamentosHoje
+        agendamentosHoje,
       );
       break;
     }
@@ -681,7 +678,7 @@ async function handleAdminCommands(sock, sender, text) {
         0,
         0,
         0,
-        0
+        0,
       );
 
       const fimSemana = new Date(inicio);
@@ -703,7 +700,7 @@ async function handleAdminCommands(sock, sender, text) {
       await enviarAgendamentos(
         sender,
         "📆 *Agendamentos da semana:*",
-        agendamentosSemana
+        agendamentosSemana,
       );
       break;
     }
@@ -762,7 +759,7 @@ async function handleAdminCommands(sock, sender, text) {
       await enviarAgendamentos(
         sender,
         `📅 *Agendamentos para ${dataBr}:*`,
-        agendamentos
+        agendamentos,
       );
       break;
     }
@@ -789,7 +786,7 @@ async function handleAdminCommands(sock, sender, text) {
 
         await sock.sendMessage(sender, {
           text: `✏️ Agendamento com ID *${id}* atualizado para *${formatarHorarioVisual(
-            novoHorario
+            novoHorario,
           )}*.`,
         });
       }
@@ -806,7 +803,7 @@ async function handleAdminCommands(sock, sender, text) {
         0,
         0,
         0,
-        0
+        0,
       );
 
       const agendamentosFuturos = await Agendamento.findAll({
@@ -824,7 +821,7 @@ async function handleAdminCommands(sock, sender, text) {
       await enviarAgendamentos(
         sender,
         "📅 *Todos os agendamentos futuros:*",
-        agendamentosFuturos
+        agendamentosFuturos,
       );
       break;
     }
@@ -865,7 +862,7 @@ async function processarMensagemCliente(sock, sender, text) {
   if (estadoUsuario.etapa === "solicitando_nome") {
     if (!estadoUsuario.nomeSolicitado) {
       await sock.sendMessage(sender, {
-        text: "💈 OLÁ, SOMOS A BARBEARIA OFICINA DO HOMEM! INFORME SEU NOME: 💈",
+        text: "💈 OLÁ, SOMOS A BARBEARIA JK2! INFORME SEU NOME: 💈",
       });
 
       estadoUsuario.nomeSolicitado = true;
@@ -957,7 +954,7 @@ async function processarMensagemCliente(sock, sender, text) {
     const opcaoServico = parseInt(text);
 
     const servicoEscolhido = servicosDisponiveis.find(
-      (servico) => servico.id === opcaoServico
+      (servico) => servico.id === opcaoServico,
     );
 
     if (!servicoEscolhido) {
@@ -1073,7 +1070,7 @@ async function processarMensagemCliente(sock, sender, text) {
         estadoUsuario.dataEscolhida.dataFormatada,
         horarioEscolhido,
         estadoUsuario.servico,
-        estadoUsuario.precoServico
+        estadoUsuario.precoServico,
       );
 
       await sock.sendMessage(sender, {
@@ -1148,24 +1145,23 @@ async function processarMensagemCliente(sock, sender, text) {
 async function startBot() {
   const authPath = path.join(__dirname, "../baileys_auth_info");
 
- const { state, saveCreds } = await useMultiFileAuthState(authPath);
+  const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
-const { version, isLatest } = await fetchLatestBaileysVersion();
+  const { version, isLatest } = await fetchLatestBaileysVersion();
 
-console.log(
-  "Versão WhatsApp Web usada pelo Baileys:",
-  version,
-  "| Mais recente:",
-  isLatest
-);
+  console.log(
+    "Versão WhatsApp Web usada pelo Baileys:",
+    version,
+    "| Mais recente:",
+    isLatest,
+  );
 
-const sock = makeWASocket({
-  auth: state,
-  version,
-  browser: ["Ubuntu", "Chrome", "120.0.0"],
-  markOnlineOnConnect: false,
-  syncFullHistory: false,
-});
+  const sock = makeWASocket({
+    auth: state,
+    version,
+    markOnlineOnConnect: false,
+    syncFullHistory: false,
+  });
   sock.ev.on("creds.update", saveCreds);
 
   sock.ev.on("connection.update", (update) => {
@@ -1188,7 +1184,7 @@ const sock = makeWASocket({
         reason.output?.statusCode === DisconnectReason.loggedOut
       ) {
         console.log(
-          "Você foi desconectado. Apague a sessão antiga e escaneie o QR Code novamente."
+          "Você foi desconectado. Apague a sessão antiga e escaneie o QR Code novamente.",
         );
 
         return;
