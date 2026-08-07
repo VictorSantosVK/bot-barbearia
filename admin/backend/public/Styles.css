@@ -156,11 +156,39 @@ input:focus, select:focus { outline: none; border-color: var(--brass-500); box-s
 .login-container { max-width: 396px; width: 100%; }
 .login-container .card { padding: 0; overflow: hidden; }
 .login-body { padding: 34px 32px 28px; }
-.login-badge {
-  width: 54px; height: 54px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, var(--brass-300), var(--brass-600));
-  display: flex; align-items: center; justify-content: center; font-family: "Oswald"; font-weight: 700;
-  font-size: 17px; color: var(--ink-950); margin: 0 auto 18px; box-shadow: inset 0 0 0 2px rgba(20,16,13,.25);
+.login-brand{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    margin-bottom:22px;
+}
+
+.login-brand .brand-top{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.72rem;
+    letter-spacing:5px;
+    text-transform:uppercase;
+    color:#b8862c;
+    margin-bottom:6px;
+}
+
+.login-brand h1{
+    margin:0;
+    font-family:'Oswald', sans-serif;
+    font-size:2rem;
+    font-weight:700;
+    letter-spacing:2px;
+    color:#1c1712;
+    text-transform:uppercase;
+    line-height:1;
+}
+
+.login-brand .brand-line{
+    width:90px;
+    height:3px;
+    background:#b8862c;
+    border-radius:20px;
+    margin-top:10px;
 }
 .login-container h2 { margin: 0 0 6px; text-align: center; font-size: 21px; text-transform: uppercase; letter-spacing: .04em; }
 .login-container p.subtitle { text-align: center; color: var(--text-secondary); font-size: 13px; margin: 0 0 26px; }
@@ -257,7 +285,10 @@ main.content { padding: 28px 32px 60px; max-width: 1440px; width: 100%; margin: 
 /* =========================================================
    KPI GRID
    ========================================================= */
-.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 18px; }
+/* auto-fit + minmax: o número de colunas se ajusta sozinho à
+   quantidade de cards (6 no dashboard, 3 no estoque, etc.),
+   sem depender de overrides de largura fixa em media queries. */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 16px; margin-bottom: 18px; }
 .kpi-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
   padding: 18px 18px 16px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
@@ -281,7 +312,7 @@ main.content { padding: 28px 32px 60px; max-width: 1440px; width: 100%; margin: 
 .kpi-delta-label { font-size: 11px; color: var(--text-tertiary); margin-left: 6px; }
 
 /* Secondary compact stats strip */
-.stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+.stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
 .stat-chip { display: flex; align-items: center; gap: 12px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px 16px; min-width: 0; }
 .stat-chip .stat-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); flex-shrink: 0; }
 .stat-chip .stat-icon svg { width: 15px; height: 15px; }
@@ -304,8 +335,12 @@ main.content { padding: 28px 32px 60px; max-width: 1440px; width: 100%; margin: 
 .col-main { min-width: 0; }
 
 /* Filters */
-.filters { display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 12px; align-items: end; margin-bottom: 4px; }
-.filters .field { margin-bottom: 0; }
+/* flex + wrap: aceita qualquer combinação de campos e botões
+   (filtros da agenda têm 3 campos + 2 botões, o formulário de
+   venda tem 3 campos + 1 botão) sem precisar fixar colunas. */
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 4px; }
+.filters .field { flex: 1 1 160px; min-width: 140px; margin-bottom: 0; }
+.filters button { flex: 0 0 auto; }
 
 /* Table */
 .table-container { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); margin-top: 4px; -webkit-overflow-scrolling: touch; }
@@ -443,8 +478,6 @@ td.mono { font-family: "IBM Plex Mono"; font-variant-numeric: tabular-nums; }
   main.content { padding: 20px 16px 50px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-strip { grid-template-columns: 1fr; }
-  .filters { grid-template-columns: 1fr 1fr; }
-  .filters button { grid-column: span 1; }
   .modal-body .field-grid { grid-template-columns: 1fr; }
   .card-pad { padding: 18px 18px; }
   .card-head { flex-wrap: wrap; row-gap: 8px; }
@@ -454,7 +487,7 @@ td.mono { font-family: "IBM Plex Mono"; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .kpi-value { font-size: 21px; }
-  .filters { grid-template-columns: 1fr; }
+  .filters .field { flex-basis: 100%; }
   .filters button { width: 100%; }
   table { min-width: 720px; }
 

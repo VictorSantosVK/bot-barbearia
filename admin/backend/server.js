@@ -10,7 +10,9 @@ const { Op } = require("sequelize");
 
 const sequelize = require("../../config/database");
 const Agendamento = require("../../models/Agendamento");
-
+const Produto = require("../../models/Produto");
+const Venda = require("../../models/Venda");
+const Despesa = require("../../models/Despesa");
 const app = express();
 
 const PORT = process.env.PORT || 3001;
@@ -24,6 +26,14 @@ const admin = {
   usuario: ADMIN_USER,
   senhaHash: bcrypt.hashSync(ADMIN_PASSWORD, 8),
 };
+
+Produto.hasMany(Venda, {
+  foreignKey: "produto_id",
+});
+
+Venda.belongsTo(Produto, {
+  foreignKey: "produto_id",
+});
 
 app.use(express.json());
 
@@ -831,6 +841,531 @@ app.delete("/agendamentos/:id", verificarToken, async (req, res) => {
     console.error("Erro ao deletar agendamento:", error);
     res.status(500).json({
       error: "Erro ao deletar agendamento.",
+    });
+  }
+});
+
+// ============================================================
+// PRODUTOS
+// ============================================================
+
+// Listar produtos
+app.get("/produtos", verificarToken, async (req, res) => {
+  try {
+    const produtos = await Produto.findAll({
+      order: [["nome", "ASC"]],
+    });
+
+    res.json(produtos);
+  } catch (error) {
+    console.error("Erro ao listar produtos:", error);
+
+    res.status(500).json({
+      error: "Erro ao listar produtos.",
+    });
+  }
+});
+
+// Buscar um produto
+app.get("/produtos/:id", verificarToken, async (req, res) => {
+  try {
+    const produto = await Produto.findByPk(req.params.id);
+
+    if (!produto) {
+      return res.status(404).json({
+        error: "Produto não encontrado.",
+      });
+    }
+
+    res.json(produto);
+  } catch (error) {
+    console.error("Erro ao buscar produto:", error);
+
+    res.status(500).json({
+      error: "Erro ao buscar produto.",
+    });
+  }
+});
+
+// Cadastrar produto
+app.post(
+  "/produtos",
+  verificarToken,
+  [
+    body("nome").notEmpty().withMessage("Nome do produto é obrigatório."),
+
+    body("preco_custo")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Preço de custo inválido."),
+
+    body("preco_venda")
+      .notEmpty()
+      .isFloat({ min: 0 })
+      .withMessage("Preço de venda inválido."),
+
+    body("estoque")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("Estoque inválido."),
+
+    body("estoque_minimo")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("Estoque mínimo inválido."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: "Erro de validação.",
+        details: errors.array(),
+      });
+    }
+
+    try {
+      const {
+        nome,
+        descricao,
+        preco_custo,
+        preco_venda,
+        estoque,
+        estoque_minimo,
+      } = req.body;
+
+      const produto = await Produto.create({
+        nome,
+        descricao: descricao || null,
+        preco_custo: Number(preco_custo) || 0,
+        preco_venda: Number(preco_venda) || 0,
+        estoque: Number(estoque) || 0,
+        estoque_minimo: Number(estoque_minimo) || 0,
+        ativo: true,
+      });
+
+      res.status(201).json(produto);
+    } catch (error) {
+      console.error("Erro ao cadastrar produto:", error);
+
+      res.status(500).json({
+        error: "Erro ao cadastrar produto.",
+      });
+    }
+  },
+);
+
+// Alterar produto
+app.put("/produtos/:id", verificarToken, async (req, res) => {
+  try {
+    const produto = await Produto.findByPk(req.params.id);
+
+    if (!produto) {
+      return res.status(404).json({
+        error: "Produto não encontrado.",
+      });
+    }
+
+    const {
+      nome,
+      descricao,
+      preco_custo,
+      preco_venda,
+      estoque,
+      estoque_minimo,
+      ativo,
+    } = req.body;
+
+    await produto.update({
+      nome: nome ?? produto.nome,
+      descricao: descricao ?? produto.descricao,
+      preco_custo:
+        preco_custo !== undefined ? Number(preco_custo) : produto.preco_custo,
+      preco_venda:
+        preco_venda !== undefined ? Number(preco_venda) : produto.preco_venda,
+      estoque: estoque !== undefined ? Number(estoque) : produto.estoque,
+      estoque_minimo:
+        estoque_minimo !== undefined
+          ? Number(estoque_minimo)
+          : produto.estoque_minimo,
+      ativo: ativo !== undefined ? Boolean(ativo) : produto.ativo,
+    });
+
+    res.json(produto);
+  } catch (error) {
+    console.error("Erro ao atualizar produto:", error);
+
+    res.status(500).json({
+      error: "Erro ao atualizar produto.",
+    });
+  }
+});
+
+// Excluir produto
+app.delete("/produtos/:id", verificarToken, async (req, res) => {
+  try {
+    const produto = await Produto.findByPk(req.params.id);
+
+    if (!produto) {
+      return res.status(404).json({
+        error: "Produto não encontrado.",
+      });
+    }
+
+    const vendas = await Venda.count({
+      where: {
+        produto_id: produto.id,
+      },
+    });
+
+    // Não deixa apagar um produto que já possui vendas.
+    if (vendas > 0) {
+      return res.status(400).json({
+        error:
+          "Este produto possui vendas registradas e não pode ser excluído. Desative o produto em vez de excluí-lo.",
+      });
+    }
+
+    await produto.destroy();
+
+    res.json({
+      message: "Produto excluído com sucesso.",
+    });
+  } catch (error) {
+    console.error("Erro ao excluir produto:", error);
+
+    res.status(500).json({
+      error: "Erro ao excluir produto.",
+    });
+  }
+});
+
+// ============================================================
+// VENDAS
+// ============================================================
+
+// Listar vendas
+app.get("/vendas", verificarToken, async (req, res) => {
+  try {
+    const vendas = await Venda.findAll({
+      include: [
+        {
+          model: Produto,
+          attributes: ["id", "nome"],
+        },
+      ],
+      order: [["data", "DESC"]],
+    });
+
+    res.json(vendas);
+  } catch (error) {
+    console.error("Erro ao listar vendas:", error);
+
+    res.status(500).json({
+      error: "Erro ao listar vendas.",
+    });
+  }
+});
+
+// Registrar venda
+app.post(
+  "/vendas",
+  verificarToken,
+  [
+    body("produto_id").notEmpty().isInt().withMessage("Produto inválido."),
+
+    body("quantidade")
+      .notEmpty()
+      .isInt({ min: 1 })
+      .withMessage("Quantidade inválida."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: "Erro de validação.",
+        details: errors.array(),
+      });
+    }
+
+    try {
+      const { produto_id, quantidade } = req.body;
+
+      const produto = await Produto.findByPk(produto_id);
+
+      if (!produto) {
+        return res.status(404).json({
+          error: "Produto não encontrado.",
+        });
+      }
+
+      if (!produto.ativo) {
+        return res.status(400).json({
+          error: "Este produto está desativado.",
+        });
+      }
+
+      const qtd = Number(quantidade);
+
+      if (produto.estoque < qtd) {
+        return res.status(400).json({
+          error: `Estoque insuficiente. Estoque atual: ${produto.estoque}.`,
+        });
+      }
+
+      const valorUnitario = Number(produto.preco_venda);
+      const valorTotal = valorUnitario * qtd;
+
+      const venda = await Venda.create({
+        produto_id: produto.id,
+        quantidade: qtd,
+        valor_unitario: valorUnitario,
+        valor_total: valorTotal,
+        data: new Date(),
+      });
+
+      // Baixa automática no estoque.
+      await produto.update({
+        estoque: produto.estoque - qtd,
+      });
+
+      const vendaCompleta = await Venda.findByPk(venda.id, {
+        include: [
+          {
+            model: Produto,
+            attributes: ["id", "nome"],
+          },
+        ],
+      });
+
+      res.status(201).json(vendaCompleta);
+    } catch (error) {
+      console.error("Erro ao registrar venda:", error);
+
+      res.status(500).json({
+        error: "Erro ao registrar venda.",
+      });
+    }
+  },
+);
+
+// ============================================================
+// DESPESAS
+// ============================================================
+
+// Listar despesas
+app.get("/despesas", verificarToken, async (req, res) => {
+  try {
+    const despesas = await Despesa.findAll({
+      order: [["data", "DESC"]],
+    });
+
+    res.json(despesas);
+  } catch (error) {
+    console.error("Erro ao listar despesas:", error);
+
+    res.status(500).json({
+      error: "Erro ao listar despesas.",
+    });
+  }
+});
+
+// Cadastrar despesa
+app.post(
+  "/despesas",
+  verificarToken,
+  [
+    body("descricao")
+      .notEmpty()
+      .withMessage("Descrição da despesa é obrigatória."),
+
+    body("valor")
+      .notEmpty()
+      .isFloat({ min: 0 })
+      .withMessage("Valor da despesa inválido."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: "Erro de validação.",
+        details: errors.array(),
+      });
+    }
+
+    try {
+      const { descricao, categoria, valor, data } = req.body;
+
+      const despesa = await Despesa.create({
+        descricao,
+        categoria: categoria || null,
+        valor: Number(valor),
+        data: data ? new Date(data) : new Date(),
+      });
+
+      res.status(201).json(despesa);
+    } catch (error) {
+      console.error("Erro ao cadastrar despesa:", error);
+
+      res.status(500).json({
+        error: "Erro ao cadastrar despesa.",
+      });
+    }
+  },
+);
+
+// Excluir despesa
+app.delete("/despesas/:id", verificarToken, async (req, res) => {
+  try {
+    const despesa = await Despesa.findByPk(req.params.id);
+
+    if (!despesa) {
+      return res.status(404).json({
+        error: "Despesa não encontrada.",
+      });
+    }
+
+    await despesa.destroy();
+
+    res.json({
+      message: "Despesa excluída com sucesso.",
+    });
+  } catch (error) {
+    console.error("Erro ao excluir despesa:", error);
+
+    res.status(500).json({
+      error: "Erro ao excluir despesa.",
+    });
+  }
+});
+
+// ============================================================
+// FINANCEIRO
+// ============================================================
+
+app.get("/financeiro", verificarToken, async (req, res) => {
+  try {
+    const inicioMes = new Date();
+    inicioMes.setDate(1);
+    inicioMes.setHours(0, 0, 0, 0);
+
+    const fimMes = new Date();
+    fimMes.setMonth(fimMes.getMonth() + 1);
+    fimMes.setDate(0);
+    fimMes.setHours(23, 59, 59, 999);
+
+    // Vendas de produtos no mês
+    const vendas = await Venda.findAll({
+      where: {
+        data: {
+          [Op.between]: [inicioMes, fimMes],
+        },
+      },
+    });
+
+    // Serviços concluídos no mês
+    const agendamentosConcluidos = await Agendamento.findAll({
+      where: {
+        concluido: true,
+        data: {
+          [Op.between]: [inicioMes, fimMes],
+        },
+      },
+    });
+
+    // Despesas do mês
+    const despesas = await Despesa.findAll({
+      where: {
+        data: {
+          [Op.between]: [inicioMes, fimMes],
+        },
+      },
+    });
+
+    let faturamentoProdutos = 0;
+    let custoProdutos = 0;
+
+    for (const venda of vendas) {
+      faturamentoProdutos += Number(venda.valor_total);
+
+      const produto = await Produto.findByPk(venda.produto_id);
+
+      if (produto) {
+        custoProdutos += Number(produto.preco_custo) * Number(venda.quantidade);
+      }
+    }
+
+    let faturamentoServicos = 0;
+
+    for (const agendamento of agendamentosConcluidos) {
+      faturamentoServicos += Number(agendamento.preco_servico || 0);
+    }
+
+    let totalDespesas = 0;
+
+    for (const despesa of despesas) {
+      totalDespesas += Number(despesa.valor);
+    }
+
+    const faturamentoTotal = faturamentoProdutos + faturamentoServicos;
+
+    const lucroBruto = faturamentoTotal - custoProdutos;
+
+    const lucroLiquido = lucroBruto - totalDespesas;
+
+    // Valor atual investido no estoque.
+    const produtos = await Produto.findAll();
+
+    let valorEstoque = 0;
+    let quantidadeEstoque = 0;
+
+    for (const produto of produtos) {
+      valorEstoque += Number(produto.preco_custo) * Number(produto.estoque);
+
+      quantidadeEstoque += Number(produto.estoque);
+    }
+
+    res.json({
+      periodo: {
+        inicio: inicioMes,
+        fim: fimMes,
+      },
+
+      faturamento: {
+        produtos: faturamentoProdutos,
+        servicos: faturamentoServicos,
+        total: faturamentoTotal,
+      },
+
+      custos: {
+        produtos: custoProdutos,
+      },
+
+      despesas: totalDespesas,
+
+      lucro: {
+        bruto: lucroBruto,
+        liquido: lucroLiquido,
+      },
+
+      estoque: {
+        quantidade: quantidadeEstoque,
+        valor: valorEstoque,
+      },
+
+      quantidade: {
+        vendasProdutos: vendas.length,
+        servicosConcluidos: agendamentosConcluidos.length,
+        despesas: despesas.length,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao carregar financeiro:", error);
+
+    res.status(500).json({
+      error: "Erro ao carregar informações financeiras.",
     });
   }
 });
