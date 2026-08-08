@@ -214,7 +214,7 @@ function numeroParaEmoji(numero) {
 function montarMenuPrincipal(nome = "") {
   const saudacao = nome
     ? `💈 Olá, ${nome}! Bem-vindo à Barbearia Oficina do Homem. 💈`
-    : "💈 Olá, somos a Barbearia Oficina do Homem! 💈";
+    : "💈 Olá, Seja Bem vindo à Barbearia Oficina do Homem! 💈";
 
   return (
     `${saudacao}\n` +
@@ -862,7 +862,7 @@ async function processarMensagemCliente(sock, sender, text) {
   if (estadoUsuario.etapa === "solicitando_nome") {
     if (!estadoUsuario.nomeSolicitado) {
       await sock.sendMessage(sender, {
-        text: "💈 OLÁ, SOMOS A BARBEARIA OFICINA DO HOMEM! INFORME SEU NOME: 💈",
+        text: "💈 OLÁ, BEM-VINDO À BARBEARIA OFICINA DO HOMEM! INFORME SEU NOME: 💈",
       });
 
       estadoUsuario.nomeSolicitado = true;
