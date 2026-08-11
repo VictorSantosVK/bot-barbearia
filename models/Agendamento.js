@@ -21,7 +21,7 @@ const Agendamento = sequelize.define(
     },
 
     data: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
       allowNull: false,
     },
 
@@ -38,7 +38,7 @@ const Agendamento = sequelize.define(
     preco_servico: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
-      defaultValue: 0.00,
+      defaultValue: 0.0,
     },
 
     // Marca se o serviço já foi realizado/pago. Usado para calcular o
@@ -51,7 +51,7 @@ const Agendamento = sequelize.define(
   },
   {
     timestamps: false,
-  }
+  },
 );
 
 module.exports = Agendamento;
