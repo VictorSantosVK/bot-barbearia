@@ -1359,19 +1359,29 @@
       }
 
       async function request(url, options = {}) {
-        const resposta = await fetch(url, options);
+        const resposta = await fetch(url, {
+          ...options,
+          cache: "no-store",
+        });
+
         if (resposta.status === 401) {
           limparToken();
           mostrarLogin();
           throw new Error("Sessão expirada. Faça login novamente.");
         }
+
         let data = null;
+
         try {
           data = await resposta.json();
         } catch (error) {
           data = null;
         }
-        if (!resposta.ok) throw new Error(data?.error || "Erro na requisição.");
+
+        if (!resposta.ok) {
+          throw new Error(data?.error || "Erro na requisição.");
+        }
+
         return data;
       }
 
