@@ -6,7 +6,7 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 
 const sequelize = require("../../config/database");
 const Agendamento = require("../../models/Agendamento");
@@ -20,19 +20,33 @@ const PORT = process.env.PORT || 3001;
 
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "xxx";
-
 const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  "segredo_super_simples_para_teste_local";
+  process.env.JWT_SECRET || "segredo_super_simples_para_teste_local";
+
+/*
+============================================================
+CONFIGURAÇÃO DE FUSO
+============================================================
+*/
+
+const TIMEZONE = "America/Sao_Paulo";
+
+/*
+============================================================
+ADMIN
+============================================================
+*/
 
 const admin = {
   usuario: ADMIN_USER,
   senhaHash: bcrypt.hashSync(ADMIN_PASSWORD, 8),
 };
 
-// ============================================================
-// RELACIONAMENTOS
-// ============================================================
+/*
+============================================================
+RELACIONAMENTOS
+============================================================
+*/
 
 Produto.hasMany(Venda, {
   foreignKey: "produto_id",
@@ -42,9 +56,11 @@ Venda.belongsTo(Produto, {
   foreignKey: "produto_id",
 });
 
-// ============================================================
-// MIDDLEWARES
-// ============================================================
+/*
+============================================================
+MIDDLEWARES
+============================================================
+*/
 
 app.use(express.json());
 
@@ -62,9 +78,11 @@ app.use(
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ============================================================
-// BANCO
-// ============================================================
+/*
+============================================================
+BANCO
+============================================================
+*/
 
 sequelize
   .sync({ force: false })
@@ -73,9 +91,11 @@ sequelize
     console.error("Erro ao sincronizar o banco de dados:", err),
   );
 
-// ============================================================
-// HORÁRIOS
-// ============================================================
+/*
+============================================================
+HORÁRIOS
+============================================================
+*/
 
 const horariosPorDia = {
   segunda: [
@@ -213,9 +233,11 @@ const horariosPorDia = {
   domingo: [],
 };
 
-// ============================================================
-// PREÇOS
-// ============================================================
+/*
+============================================================
+PREÇOS
+============================================================
+*/
 
 const precosServicos = {
   Cabelo: 30.0,
@@ -230,44 +252,20 @@ function calcularPrecoServico(servico) {
   return precosServicos[servico] ?? 0;
 }
 
-// ============================================================
-// FUNÇÕES DE DATA
-// ============================================================
-//
-// IMPORTANTE:
-//
-// Data de agendamento é tratada como DATA CIVIL:
-//
-//     "2026-08-10"
-//
-// Não usamos:
-//     new Date("2026-08-10")
-//     new Date(ano, mes, dia)
-//
-// para representar a data do agendamento.
-//
-// Isso evita problemas de UTC na produção.
-// ============================================================
+/*
+============================================================
+FUNÇÕES DE DATA
+============================================================
+*/
 
-function validarDataYYYYMMDD(data) {
-  if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-    return false;
-  }
-
-  const [ano, mes, dia] = data.split("-").map(Number);
-
-  // Validação usando UTC somente para verificar
-  // se a data realmente existe.
-  const dateObj = new Date(Date.UTC(ano, mes - 1, dia));
-
-  return (
-    dateObj.getUTCFullYear() === ano &&
-    dateObj.getUTCMonth() === mes - 1 &&
-    dateObj.getUTCDate() === dia
-  );
-}
-
-function getDiaSemana(dataString) {
+/**
+ * Retorna o dia da semana para uma data YYYY-MM-DD.
+ *
+ * IMPORTANTE:
+ * Não usamos new Date("YYYY-MM-DD"), pois isso pode gerar
+ * problemas de timezone.
+ */
+function getDiaSemana(dateString) {
   const dias = [
     "domingo",
     "segunda",
@@ -278,17 +276,82 @@ function getDiaSemana(dataString) {
     "sabado",
   ];
 
-  const [ano, mes, dia] = dataString.split("-").map(Number);
+  const [ano, mes, dia] = dateString.split("-").map(Number);
+
+  // UTC apenas para descobrir o dia da semana.
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+
+  return dias[data.getUTCDay()];
+}
+
+/**
+ * Valida YYYY-MM-DD sem depender do timezone.
+ */
+function validarDataYYYYMMDD(data) {
+  if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    return false;
+  }
+
+  const [ano, mes, dia] = data.split("-").map(Number);
 
   const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
 
-  return dias[dataUTC.getUTCDay()];
+  return (
+    dataUTC.getUTCFullYear() === ano &&
+    dataUTC.getUTCMonth() === mes - 1 &&
+    dataUTC.getUTCDate() === dia
+  );
 }
 
-function formatarHorarioParaBanco(horario) {
-  if (!horario) {
-    return horario;
+/**
+ * Converte uma data do banco para YYYY-MM-DD.
+ *
+ * Essa função é propositalmente independente de timezone.
+ */
+function normalizarDataBanco(data) {
+  if (!data) return null;
+
+  // Caso seja string.
+  if (typeof data === "string") {
+    return data.substring(0, 10);
   }
+
+  // Caso seja Date.
+  if (data instanceof Date) {
+    const ano = data.getUTCFullYear();
+    const mes = String(data.getUTCMonth() + 1).padStart(2, "0");
+    const dia = String(data.getUTCDate()).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  return String(data).substring(0, 10);
+}
+
+/**
+ * Cria uma data UTC para representar uma data civil.
+ *
+ * Exemplo:
+ *
+ * 2026-08-10
+ *
+ * vira:
+ *
+ * 2026-08-10T00:00:00.000Z
+ *
+ * sem depender do timezone do servidor.
+ */
+function dataCivilParaDate(data) {
+  const [ano, mes, dia] = data.split("-").map(Number);
+
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+/**
+ * Formata HH:MM para HH:MM:SS.
+ */
+function formatarHorarioParaBanco(horario) {
+  if (!horario) return horario;
 
   if (/^\d{2}:\d{2}$/.test(horario)) {
     return `${horario}:00`;
@@ -297,98 +360,126 @@ function formatarHorarioParaBanco(horario) {
   return horario;
 }
 
-// Retorna o dia atual no Brasil.
-//
-// O servidor está em UTC, então NÃO usamos:
-// new Date().getDate()
-//
-// para descobrir a data comercial da barbearia.
+/**
+ * Retorna o intervalo UTC correspondente à data civil.
+ *
+ * Como a coluna data representa apenas a data do agendamento,
+ * trabalhamos com o dia inteiro em UTC.
+ */
+function intervaloDoDia(data) {
+  const [ano, mes, dia] = data.split("-").map(Number);
 
-function getDataAtualBrasil() {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
+  const inicio = new Date(Date.UTC(ano, mes - 1, dia, 0, 0, 0, 0));
+
+  const fim = new Date(
+    Date.UTC(ano, mes - 1, dia, 23, 59, 59, 999),
+  );
+
+  return { inicio, fim };
+}
+
+/**
+ * Obtém a data atual no horário de São Paulo como YYYY-MM-DD.
+ */
+function dataAtualSaoPaulo() {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  });
+  }).formatToParts(new Date());
 
-  return formatter.format(new Date());
-}
+  const valores = {};
 
-// Adiciona dias sem depender do timezone local do servidor.
-function adicionarDias(dataString, quantidadeDias) {
-  const [ano, mes, dia] = dataString.split("-").map(Number);
-
-  const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
-
-  dataUTC.setUTCDate(dataUTC.getUTCDate() + quantidadeDias);
-
-  const novoAno = dataUTC.getUTCFullYear();
-  const novoMes = String(dataUTC.getUTCMonth() + 1).padStart(2, "0");
-  const novoDia = String(dataUTC.getUTCDate()).padStart(2, "0");
-
-  return `${novoAno}-${novoMes}-${novoDia}`;
-}
-
-function intervaloDoDia(data) {
-  if (!validarDataYYYYMMDD(data)) {
-    throw new Error(`Data inválida: ${data}`);
+  for (const parte of partes) {
+    if (parte.type !== "literal") {
+      valores[parte.type] = parte.value;
+    }
   }
 
-  // Como Agendamento.data deve ser DATEONLY,
-  // usamos diretamente a string.
-  return {
-    inicio: data,
-    fim: data,
-  };
+  return `${valores.year}-${valores.month}-${valores.day}`;
 }
 
+/**
+ * Retorna o intervalo da semana corrente.
+ */
 function intervaloDaSemana() {
-  const hoje = getDataAtualBrasil();
+  const hojeString = dataAtualSaoPaulo();
 
-  const [ano, mes, dia] = hoje.split("-").map(Number);
+  const [ano, mes, dia] = hojeString.split("-").map(Number);
 
-  const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
+  const hojeUTC = new Date(Date.UTC(ano, mes - 1, dia));
 
-  const diaSemana = dataUTC.getUTCDay();
+  const diaSemana = hojeUTC.getUTCDay();
 
-  const inicio = adicionarDias(hoje, -diaSemana);
-  const fim = adicionarDias(inicio, 6);
+  const inicio = new Date(hojeUTC);
+  inicio.setUTCDate(inicio.getUTCDate() - diaSemana);
+  inicio.setUTCHours(0, 0, 0, 0);
 
-  return {
-    inicio,
-    fim,
-  };
+  const fim = new Date(inicio);
+  fim.setUTCDate(fim.getUTCDate() + 6);
+  fim.setUTCHours(23, 59, 59, 999);
+
+  return { inicio, fim };
 }
 
+/**
+ * Retorna o intervalo do mês corrente.
+ */
 function intervaloDoMes() {
-  const hoje = getDataAtualBrasil();
+  const hojeString = dataAtualSaoPaulo();
 
-  const [ano, mes] = hoje.split("-").map(Number);
+  const [ano, mes] = hojeString.split("-").map(Number);
 
-  const inicio =
-    `${ano}-${String(mes).padStart(2, "0")}-01`;
+  const inicio = new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0, 0));
 
-  const ultimoDiaUTC = new Date(
-    Date.UTC(ano, mes, 0),
+  const fim = new Date(
+    Date.UTC(ano, mes, 0, 23, 59, 59, 999),
   );
 
-  const ultimoDia = String(
-    ultimoDiaUTC.getUTCDate(),
-  ).padStart(2, "0");
-
-  const fim =
-    `${ano}-${String(mes).padStart(2, "0")}-${ultimoDia}`;
-
-  return {
-    inicio,
-    fim,
-  };
+  return { inicio, fim };
 }
 
-// ============================================================
-// AUTENTICAÇÃO
-// ============================================================
+/*
+============================================================
+SERIALIZAÇÃO DOS AGENDAMENTOS
+============================================================
+*/
+
+/**
+ * O Sequelize transforma DATETIME em Date.
+ *
+ * Para evitar que o frontend faça uma conversão de timezone
+ * acidental, a API devolve:
+ *
+ * data: "2026-08-10"
+ *
+ * em vez de:
+ *
+ * data: "2026-08-10T00:00:00.000Z"
+ */
+function serializarAgendamento(agendamento) {
+  const json =
+    typeof agendamento.toJSON === "function"
+      ? agendamento.toJSON()
+      : { ...agendamento };
+
+  json.data = normalizarDataBanco(json.data);
+
+  if (json.horario instanceof Date) {
+    json.horario = json.horario.toISOString().substring(11, 19);
+  } else if (json.horario) {
+    json.horario = String(json.horario).substring(0, 8);
+  }
+
+  return json;
+}
+
+/*
+============================================================
+TOKEN
+============================================================
+*/
 
 function verificarToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -422,28 +513,28 @@ function verificarToken(req, res, next) {
   }
 }
 
-// ============================================================
-// ROTAS GERAIS
-// ============================================================
+/*
+============================================================
+ROTAS BÁSICAS
+============================================================
+*/
 
 app.get("/", (req, res) => {
   res.redirect("/admin.html");
 });
 
-// ============================================================
-// LOGIN
-// ============================================================
+/*
+============================================================
+LOGIN
+============================================================
+*/
 
 app.post(
   "/login",
   [
-    body("usuario")
-      .notEmpty()
-      .withMessage("Usuário é obrigatório"),
+    body("usuario").notEmpty().withMessage("Usuário é obrigatório"),
 
-    body("senha")
-      .notEmpty()
-      .withMessage("Senha é obrigatória"),
+    body("senha").notEmpty().withMessage("Senha é obrigatória"),
   ],
   (req, res) => {
     const errors = validationResult(req);
@@ -457,14 +548,11 @@ app.post(
 
     const { usuario, senha } = req.body;
 
-    const usuarioValido =
-      usuario === admin.usuario;
-
-    const senhaValida =
-      bcrypt.compareSync(
-        senha,
-        admin.senhaHash,
-      );
+    const usuarioValido = usuario === admin.usuario;
+    const senhaValida = bcrypt.compareSync(
+      senha,
+      admin.senhaHash,
+    );
 
     if (!usuarioValido || !senhaValida) {
       return res.status(401).json({
@@ -491,9 +579,11 @@ app.post(
   },
 );
 
-// ============================================================
-// ME
-// ============================================================
+/*
+============================================================
+ME
+============================================================
+*/
 
 app.get("/me", verificarToken, (req, res) => {
   res.json({
@@ -502,151 +592,127 @@ app.get("/me", verificarToken, (req, res) => {
   });
 });
 
-// ============================================================
-// DASHBOARD
-// ============================================================
+/*
+============================================================
+DASHBOARD
+============================================================
+*/
 
-app.get(
-  "/dashboard",
-  verificarToken,
-  async (req, res) => {
-    try {
-      const hoje = getDataAtualBrasil();
+app.get("/dashboard", verificarToken, async (req, res) => {
+  try {
+    const dataHoje = dataAtualSaoPaulo();
 
-      const { inicio: inicioHoje, fim: fimHoje } =
-        intervaloDoDia(hoje);
+    const {
+      inicio: inicioHoje,
+      fim: fimHoje,
+    } = intervaloDoDia(dataHoje);
 
-      const {
-        inicio: inicioSemana,
-        fim: fimSemana,
-      } = intervaloDaSemana();
+    const {
+      inicio: inicioSemana,
+      fim: fimSemana,
+    } = intervaloDaSemana();
 
-      const {
-        inicio: inicioMes,
-        fim: fimMes,
-      } = intervaloDoMes();
+    const {
+      inicio: inicioMes,
+      fim: fimMes,
+    } = intervaloDoMes();
 
-      const totalAgendamentos =
-        await Agendamento.count();
+    const totalAgendamentos = await Agendamento.count();
 
-      const agendamentosHoje =
-        await Agendamento.count({
-          where: {
-            data: {
-              [Op.between]: [
-                inicioHoje,
-                fimHoje,
-              ],
-            },
-          },
-        });
-
-      const futuros =
-        await Agendamento.count({
-          where: {
-            data: {
-              [Op.gte]: inicioHoje,
-            },
-          },
-        });
-
-      const cabelo =
-        await Agendamento.count({
-          where: {
-            servico: "Cabelo",
-          },
-        });
-
-      const cabeloBarba =
-        await Agendamento.count({
-          where: {
-            servico: "Cabelo e Barba",
-          },
-        });
-
-      const faturamentoHoje =
-        await Agendamento.sum(
-          "preco_servico",
-          {
-            where: {
-              concluido: true,
-
-              data: {
-                [Op.between]: [
-                  inicioHoje,
-                  fimHoje,
-                ],
-              },
-            },
-          },
-        );
-
-      const faturamentoSemana =
-        await Agendamento.sum(
-          "preco_servico",
-          {
-            where: {
-              concluido: true,
-
-              data: {
-                [Op.between]: [
-                  inicioSemana,
-                  fimSemana,
-                ],
-              },
-            },
-          },
-        );
-
-      const faturamentoMes =
-        await Agendamento.sum(
-          "preco_servico",
-          {
-            where: {
-              concluido: true,
-
-              data: {
-                [Op.between]: [
-                  inicioMes,
-                  fimMes,
-                ],
-              },
-            },
-          },
-        );
-
-      res.json({
-        totalAgendamentos,
-        agendamentosHoje,
-        futuros,
-
-        servicos: {
-          cabelo,
-          cabeloBarba,
+    const agendamentosHoje = await Agendamento.count({
+      where: {
+        data: {
+          [Op.between]: [inicioHoje, fimHoje],
         },
+      },
+    });
 
-        faturamento: {
-          hoje: faturamentoHoje || 0,
-          semana: faturamentoSemana || 0,
-          mes: faturamentoMes || 0,
+    const futuros = await Agendamento.count({
+      where: {
+        data: {
+          [Op.gte]: inicioHoje,
         },
-      });
-    } catch (error) {
-      console.error(
-        "Erro ao carregar dashboard:",
-        error,
-      );
+      },
+    });
 
-      res.status(500).json({
-        error: "Erro ao carregar dashboard.",
-      });
-    }
-  },
-);
+    const cabelo = await Agendamento.count({
+      where: {
+        servico: "Cabelo",
+      },
+    });
 
-// ============================================================
-// HORÁRIOS DISPONÍVEIS
-// ============================================================
+    const cabeloBarba = await Agendamento.count({
+      where: {
+        servico: "Cabelo e Barba",
+      },
+    });
+
+    const faturamentoHoje = await Agendamento.sum(
+      "preco_servico",
+      {
+        where: {
+          concluido: true,
+          data: {
+            [Op.between]: [inicioHoje, fimHoje],
+          },
+        },
+      },
+    );
+
+    const faturamentoSemana = await Agendamento.sum(
+      "preco_servico",
+      {
+        where: {
+          concluido: true,
+          data: {
+            [Op.between]: [inicioSemana, fimSemana],
+          },
+        },
+      },
+    );
+
+    const faturamentoMes = await Agendamento.sum(
+      "preco_servico",
+      {
+        where: {
+          concluido: true,
+          data: {
+            [Op.between]: [inicioMes, fimMes],
+          },
+        },
+      },
+    );
+
+    res.json({
+      totalAgendamentos,
+      agendamentosHoje,
+      futuros,
+
+      servicos: {
+        cabelo,
+        cabeloBarba,
+      },
+
+      faturamento: {
+        hoje: faturamentoHoje || 0,
+        semana: faturamentoSemana || 0,
+        mes: faturamentoMes || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao carregar dashboard:", error);
+
+    res.status(500).json({
+      error: "Erro ao carregar dashboard.",
+    });
+  }
+});
+
+/*
+============================================================
+HORÁRIOS DISPONÍVEIS
+============================================================
+*/
 
 app.get(
   "/horarios-disponiveis",
@@ -662,44 +728,33 @@ app.get(
         });
       }
 
-      const diaSemana =
-        getDiaSemana(data);
+      const diaSemana = getDiaSemana(data);
 
       const horariosDisponiveis =
         horariosPorDia[diaSemana] || [];
 
-      const { inicio, fim } =
-        intervaloDoDia(data);
+      const { inicio, fim } = intervaloDoDia(data);
 
-      const agendamentos =
-        await Agendamento.findAll({
-          where: {
-            data: {
-              [Op.between]: [
-                inicio,
-                fim,
-              ],
-            },
+      const agendamentos = await Agendamento.findAll({
+        where: {
+          data: {
+            [Op.between]: [inicio, fim],
           },
+        },
 
-          attributes: ["horario"],
-        });
+        attributes: ["horario"],
+      });
 
-      const horariosAgendados =
-        agendamentos.map((a) => {
-          if (!a.horario) {
-            return null;
-          }
+      const horariosAgendados = agendamentos.map((a) => {
+        if (!a.horario) return null;
 
-          return String(a.horario).slice(0, 5);
-        });
+        return String(a.horario).substring(0, 5);
+      });
 
       const horariosLivres =
         horariosDisponiveis.filter(
           (horario) =>
-            !horariosAgendados.includes(
-              horario,
-            ),
+            !horariosAgendados.includes(horario),
         );
 
       res.json({
@@ -723,9 +778,11 @@ app.get(
   },
 );
 
-// ============================================================
-// LISTAR AGENDAMENTOS
-// ============================================================
+/*
+============================================================
+LISTAR AGENDAMENTOS
+============================================================
+*/
 
 app.get(
   "/agendamentos",
@@ -754,10 +811,7 @@ app.get(
         } = intervaloDoDia(data);
 
         where.data = {
-          [Op.between]: [
-            inicio,
-            fim,
-          ],
+          [Op.between]: [inicio, fim],
         };
       }
 
@@ -781,7 +835,9 @@ app.get(
           ],
         });
 
-      res.json(agendamentos);
+      res.json(
+        agendamentos.map(serializarAgendamento),
+      );
     } catch (error) {
       console.error(
         "Erro ao listar agendamentos:",
@@ -789,16 +845,17 @@ app.get(
       );
 
       res.status(500).json({
-        error:
-          "Erro ao listar agendamentos.",
+        error: "Erro ao listar agendamentos.",
       });
     }
   },
 );
 
-// ============================================================
-// BUSCAR AGENDAMENTO
-// ============================================================
+/*
+============================================================
+BUSCAR AGENDAMENTO
+============================================================
+*/
 
 app.get(
   "/agendamentos/:id",
@@ -812,12 +869,13 @@ app.get(
 
       if (!agendamento) {
         return res.status(404).json({
-          error:
-            "Agendamento não encontrado.",
+          error: "Agendamento não encontrado.",
         });
       }
 
-      res.json(agendamento);
+      res.json(
+        serializarAgendamento(agendamento),
+      );
     } catch (error) {
       console.error(
         "Erro ao buscar agendamento:",
@@ -825,21 +883,21 @@ app.get(
       );
 
       res.status(500).json({
-        error:
-          "Erro ao buscar agendamento.",
+        error: "Erro ao buscar agendamento.",
       });
     }
   },
 );
 
-// ============================================================
-// CRIAR AGENDAMENTO
-// ============================================================
+/*
+============================================================
+CRIAR AGENDAMENTO
+============================================================
+*/
 
 app.post(
   "/agendamentos",
   verificarToken,
-
   [
     body("nome_cliente")
       .notEmpty()
@@ -855,12 +913,8 @@ app.post(
 
     body("data")
       .notEmpty()
-      .withMessage(
-        "Data é obrigatória",
-      )
-      .matches(
-        /^\d{4}-\d{2}-\d{2}$/,
-      )
+      .withMessage("Data é obrigatória")
+      .matches(/^\d{4}-\d{2}-\d{2}$/)
       .withMessage(
         "Formato de data inválido. Use YYYY-MM-DD.",
       ),
@@ -870,9 +924,7 @@ app.post(
       .withMessage(
         "Horário é obrigatório",
       )
-      .matches(
-        /^\d{2}:\d{2}(:\d{2})?$/,
-      )
+      .matches(/^\d{2}:\d{2}(:\d{2})?$/)
       .withMessage(
         "Formato de horário inválido. Use HH:MM.",
       ),
@@ -885,8 +937,7 @@ app.post(
   ],
 
   async (req, res) => {
-    const errors =
-      validationResult(req);
+    const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -904,6 +955,12 @@ app.post(
         servico,
       } = req.body;
 
+      /*
+      ----------------------------------------------
+      DATA
+      ----------------------------------------------
+      */
+
       if (!validarDataYYYYMMDD(data)) {
         return res.status(400).json({
           error: "Data inválida.",
@@ -911,9 +968,13 @@ app.post(
       }
 
       const horarioFormatado =
-        formatarHorarioParaBanco(
-          horario,
-        );
+        formatarHorarioParaBanco(horario);
+
+      /*
+      ----------------------------------------------
+      CONFLITO
+      ----------------------------------------------
+      */
 
       const {
         inicio,
@@ -924,14 +985,10 @@ app.post(
         await Agendamento.findOne({
           where: {
             data: {
-              [Op.between]: [
-                inicio,
-                fim,
-              ],
+              [Op.between]: [inicio, fim],
             },
 
-            horario:
-              horarioFormatado,
+            horario: horarioFormatado,
           },
         });
 
@@ -942,32 +999,35 @@ app.post(
         });
       }
 
-      // ======================================================
-      // IMPORTANTE:
-      //
-      // Não usamos new Date(ano, mes, dia).
-      //
-      // A data é salva diretamente como YYYY-MM-DD.
-      // Isso elimina o problema de timezone.
-      // ======================================================
+      /*
+      ----------------------------------------------
+      CRIAÇÃO
+      ----------------------------------------------
+
+      IMPORTANTE:
+
+      A data é criada em UTC para representar
+      exatamente o dia informado pelo usuário.
+      */
+
+      const dataBanco =
+        dataCivilParaDate(data);
 
       const agendamento =
         await Agendamento.create({
           nome_cliente,
           telefone,
-          data,
-          horario:
-            horarioFormatado,
+          data: dataBanco,
+          horario: horarioFormatado,
           servico,
-
           preco_servico:
-            calcularPrecoServico(
-              servico,
-            ),
+            calcularPrecoServico(servico),
         });
 
       res.status(201).json(
-        agendamento,
+        serializarAgendamento(
+          agendamento,
+        ),
       );
     } catch (error) {
       console.error(
@@ -983,53 +1043,58 @@ app.post(
   },
 );
 
-// ============================================================
-// EDITAR AGENDAMENTO
-// ============================================================
-//
-// PRINCIPAL CORREÇÃO DO PROBLEMA:
-//
-// A data só é atualizada se o frontend realmente
-// enviar uma nova data.
-//
-// Se o usuário alterar apenas horário, nome,
-// telefone ou serviço, a data NÃO é tocada.
-//
-// ============================================================
+/*
+============================================================
+ATUALIZAR AGENDAMENTO
+============================================================
+
+ESTA É A PARTE MAIS IMPORTANTE DA CORREÇÃO.
+
+Se o usuário mandar:
+
+{
+  "horario": "19:00"
+}
+
+NÃO alteramos a coluna `data`.
+
+Se mandar:
+
+{
+  "data": "2026-08-10"
+}
+
+a data será alterada explicitamente.
+
+Isso impede que uma simples alteração de horário
+reprocesse a data através de um objeto Date.
+============================================================
+*/
 
 app.put(
   "/agendamentos/:id",
   verificarToken,
-
   [
     body("nome_cliente")
       .optional()
       .notEmpty()
-      .withMessage(
-        "Nome inválido",
-      ),
+      .withMessage("Nome inválido"),
 
     body("telefone")
       .optional()
       .notEmpty()
-      .withMessage(
-        "Telefone inválido",
-      ),
+      .withMessage("Telefone inválido"),
 
     body("data")
       .optional()
-      .matches(
-        /^\d{4}-\d{2}-\d{2}$/,
-      )
+      .matches(/^\d{4}-\d{2}-\d{2}$/)
       .withMessage(
         "Formato de data inválido. Use YYYY-MM-DD.",
       ),
 
     body("horario")
       .optional()
-      .matches(
-        /^\d{2}:\d{2}(:\d{2})?$/,
-      )
+      .matches(/^\d{2}:\d{2}(:\d{2})?$/)
       .withMessage(
         "Formato de horário inválido. Use HH:MM.",
       ),
@@ -1037,21 +1102,16 @@ app.put(
     body("servico")
       .optional()
       .notEmpty()
-      .withMessage(
-        "Serviço inválido",
-      ),
+      .withMessage("Serviço inválido"),
   ],
 
   async (req, res) => {
-    const errors =
-      validationResult(req);
+    const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        error:
-          "Erro de validação.",
-        details:
-          errors.array(),
+        error: "Erro de validação.",
+        details: errors.array(),
       });
     }
 
@@ -1066,6 +1126,12 @@ app.put(
         servico,
       } = req.body;
 
+      /*
+      ----------------------------------------------
+      BUSCAR AGENDAMENTO
+      ----------------------------------------------
+      */
+
       const agendamento =
         await Agendamento.findByPk(id);
 
@@ -1076,54 +1142,70 @@ app.put(
         });
       }
 
-      // ======================================================
-      // DATA FINAL
-      // ======================================================
-      //
-      // NÃO fazemos:
-      //
-      // new Date(agendamento.data)
-      //
-      // porque isso pode causar deslocamento de timezone.
-      //
-      // ======================================================
+      /*
+      ----------------------------------------------
+      DATA ORIGINAL
+      ----------------------------------------------
 
-      const dataAtual =
-        String(agendamento.data)
-          .slice(0, 10);
+      IMPORTANTE:
 
-      const novaData =
-        data !== undefined
-          ? data
-          : dataAtual;
+      Nunca usamos:
 
-      if (
-        !validarDataYYYYMMDD(
-          novaData,
-        )
-      ) {
-        return res.status(400).json({
-          error:
-            "Data inválida.",
-        });
+      const novaData = agendamento.data
+
+      para depois mandar novamente ao Sequelize.
+
+      */
+
+      const dataOriginal =
+        normalizarDataBanco(
+          agendamento.data,
+        );
+
+      /*
+      ----------------------------------------------
+      DATA NOVA
+      ----------------------------------------------
+      */
+
+      let dataFinal = dataOriginal;
+
+      if (data !== undefined) {
+        if (!validarDataYYYYMMDD(data)) {
+          return res.status(400).json({
+            error: "Data inválida.",
+          });
+        }
+
+        dataFinal = data;
       }
 
-      // ======================================================
-      // HORÁRIO FINAL
-      // ======================================================
+      /*
+      ----------------------------------------------
+      HORÁRIO NOVO
+      ----------------------------------------------
+      */
 
-      const novoHorario =
-        horario !== undefined
-          ? formatarHorarioParaBanco(
-              horario,
-            )
-          : String(
-              agendamento.horario,
-            ).slice(0, 8);
+      let horarioFinal =
+        agendamento.horario;
 
-      // ======================================================
-      // VERIFICAR CONFLITO
-      // ======================================================
+      if (horario !== undefined) {
+        horarioFinal =
+          formatarHorarioParaBanco(
+            horario,
+          );
+      }
+
+      /*
+      ----------------------------------------------
+      VERIFICAR CONFLITO
+      ----------------------------------------------
+      */
+
+      const {
+        inicio,
+        fim,
+      } = intervaloDoDia(dataFinal);
 
       const conflito =
         await Agendamento.findOne({
@@ -1132,10 +1214,11 @@ app.put(
               [Op.ne]: id,
             },
 
-            data: novaData,
+            data: {
+              [Op.between]: [inicio, fim],
+            },
 
-            horario:
-              novoHorario,
+            horario: horarioFinal,
           },
         });
 
@@ -1144,11 +1227,9 @@ app.put(
           "CONFLITO DE AGENDAMENTO:",
           {
             idAtual: id,
-            conflitoId:
-              conflito.id,
-            data: novaData,
-            horario:
-              novoHorario,
+            conflitoId: conflito.id,
+            data: dataFinal,
+            horario: horarioFinal,
           },
         );
 
@@ -1157,94 +1238,112 @@ app.put(
             "Este horário já está agendado.",
 
           conflito: {
-            id:
-              conflito.id,
+            id: conflito.id,
 
             nome_cliente:
               conflito.nome_cliente,
 
-            data:
+            data: normalizarDataBanco(
               conflito.data,
+            ),
 
-            horario:
-              conflito.horario,
+            horario: conflito.horario,
           },
         });
       }
 
-      // ======================================================
-      // ATUALIZAÇÃO PARCIAL
-      // ======================================================
-      //
-      // Só adicionamos ao UPDATE aquilo que realmente
-      // veio na requisição.
-      //
-      // Isso impede que uma edição de horário/nome/serviço
-      // regrave a data.
-      //
-      // ======================================================
+      /*
+      ----------------------------------------------
+      PREÇO
+      ----------------------------------------------
+      */
 
-      const dadosAtualizacao = {};
+      const novoPreco =
+        servico !== undefined
+          ? calcularPrecoServico(servico)
+          : agendamento.preco_servico;
 
-      if (
-        nome_cliente !==
-        undefined
-      ) {
-        dadosAtualizacao.nome_cliente =
-          nome_cliente;
-      }
+      /*
+      ----------------------------------------------
+      MONTA UPDATE
+      ----------------------------------------------
 
-      if (
-        telefone !==
-        undefined
-      ) {
-        dadosAtualizacao.telefone =
-          telefone;
-      }
+      AQUI ESTÁ A CORREÇÃO PRINCIPAL.
 
-      if (
-        data !==
-        undefined
-      ) {
+      Só adicionamos `data` ao UPDATE se o usuário
+      realmente enviou uma nova data.
+
+      */
+
+      const dadosAtualizacao = {
+        nome_cliente:
+          nome_cliente ??
+          agendamento.nome_cliente,
+
+        telefone:
+          telefone ??
+          agendamento.telefone,
+
+        horario: horarioFinal,
+
+        servico:
+          servico ??
+          agendamento.servico,
+
+        preco_servico: novoPreco,
+      };
+
+      /*
+      SOMENTE se `data` foi enviada pelo frontend,
+      atualizamos a coluna data.
+      */
+
+      if (data !== undefined) {
         dadosAtualizacao.data =
-          data;
+          dataCivilParaDate(data);
       }
 
-      if (
-        horario !==
-        undefined
-      ) {
-        dadosAtualizacao.horario =
-          novoHorario;
-      }
-
-      if (
-        servico !==
-        undefined
-      ) {
-        dadosAtualizacao.servico =
-          servico;
-
-        dadosAtualizacao.preco_servico =
-          calcularPrecoServico(
-            servico,
-          );
-      }
+      /*
+      ----------------------------------------------
+      EXECUTAR UPDATE
+      ----------------------------------------------
+      */
 
       await agendamento.update(
         dadosAtualizacao,
       );
 
+      /*
+      ----------------------------------------------
+      LOG
+      ----------------------------------------------
+      */
+
       console.log(
         "AGENDAMENTO ATUALIZADO:",
         {
           id,
-          dadosAtualizacao,
+          dataAnterior: dataOriginal,
+          dataNova: dataFinal,
+          horarioAnterior:
+            agendamento._previousDataValues
+              ?.horario,
+          horarioNovo: horarioFinal,
+          dataFoiAlterada:
+            data !== undefined,
         },
       );
 
+      /*
+      ----------------------------------------------
+      RESPOSTA
+      ----------------------------------------------
+      */
+
       res.json(
-        agendamento,
+        serializarAgendamento(
+          agendamento,
+        ),
       );
     } catch (error) {
       console.error(
@@ -1260,9 +1359,11 @@ app.put(
   },
 );
 
-// ============================================================
-// CONCLUIR AGENDAMENTO
-// ============================================================
+/*
+============================================================
+CONCLUIR AGENDAMENTO
+============================================================
+*/
 
 app.patch(
   "/agendamentos/:id/concluir",
@@ -1278,22 +1379,19 @@ app.patch(
   ],
 
   async (req, res) => {
-    const errors =
-      validationResult(req);
+    const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        error:
-          "Erro de validação",
-        details:
-          errors.array(),
+        error: "Erro de validação",
+        details: errors.array(),
       });
     }
 
     try {
       const { id } = req.params;
-      const { concluido } =
-        req.body;
+
+      const { concluido } = req.body;
 
       const agendamento =
         await Agendamento.findByPk(id);
@@ -1306,18 +1404,18 @@ app.patch(
       }
 
       const novoStatus =
-        typeof concluido ===
-        "boolean"
+        typeof concluido === "boolean"
           ? concluido
           : !agendamento.concluido;
 
       await agendamento.update({
-        concluido:
-          novoStatus,
+        concluido: novoStatus,
       });
 
       res.json(
-        agendamento,
+        serializarAgendamento(
+          agendamento,
+        ),
       );
     } catch (error) {
       console.error(
@@ -1333,9 +1431,11 @@ app.patch(
   },
 );
 
-// ============================================================
-// EXCLUIR AGENDAMENTO
-// ============================================================
+/*
+============================================================
+DELETAR AGENDAMENTO
+============================================================
+*/
 
 app.delete(
   "/agendamentos/:id",
@@ -1374,11 +1474,11 @@ app.delete(
   },
 );
 
-// ============================================================
-// PRODUTOS
-// ============================================================
-
-// Listar produtos
+/*
+============================================================
+PRODUTOS
+============================================================
+*/
 
 app.get(
   "/produtos",
@@ -1387,9 +1487,7 @@ app.get(
     try {
       const produtos =
         await Produto.findAll({
-          order: [
-            ["nome", "ASC"],
-          ],
+          order: [["nome", "ASC"]],
         });
 
       res.json(produtos);
@@ -1400,14 +1498,11 @@ app.get(
       );
 
       res.status(500).json({
-        error:
-          "Erro ao listar produtos.",
+        error: "Erro ao listar produtos.",
       });
     }
   },
 );
-
-// Buscar produto
 
 app.get(
   "/produtos/:id",
@@ -1441,8 +1536,6 @@ app.get(
   },
 );
 
-// Cadastrar produto
-
 app.post(
   "/produtos",
   verificarToken,
@@ -1471,9 +1564,7 @@ app.post(
     body("estoque")
       .optional()
       .isInt({ min: 0 })
-      .withMessage(
-        "Estoque inválido.",
-      ),
+      .withMessage("Estoque inválido."),
 
     body("estoque_minimo")
       .optional()
@@ -1484,15 +1575,12 @@ app.post(
   ],
 
   async (req, res) => {
-    const errors =
-      validationResult(req);
+    const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        error:
-          "Erro de validação.",
-        details:
-          errors.array(),
+        error: "Erro de validação.",
+        details: errors.array(),
       });
     }
 
@@ -1509,35 +1597,26 @@ app.post(
       const produto =
         await Produto.create({
           nome,
+
           descricao:
             descricao || null,
 
           preco_custo:
-            Number(
-              preco_custo,
-            ) || 0,
+            Number(preco_custo) || 0,
 
           preco_venda:
-            Number(
-              preco_venda,
-            ) || 0,
+            Number(preco_venda) || 0,
 
           estoque:
-            Number(
-              estoque,
-            ) || 0,
+            Number(estoque) || 0,
 
           estoque_minimo:
-            Number(
-              estoque_minimo,
-            ) || 0,
+            Number(estoque_minimo) || 0,
 
           ativo: true,
         });
 
-      res.status(201).json(
-        produto,
-      );
+      res.status(201).json(produto);
     } catch (error) {
       console.error(
         "Erro ao cadastrar produto:",
@@ -1551,8 +1630,6 @@ app.post(
     }
   },
 );
-
-// Alterar produto
 
 app.put(
   "/produtos/:id",
@@ -1583,51 +1660,34 @@ app.put(
 
       await produto.update({
         nome:
-          nome ??
-          produto.nome,
+          nome ?? produto.nome,
 
         descricao:
-          descricao ??
-          produto.descricao,
+          descricao ?? produto.descricao,
 
         preco_custo:
-          preco_custo !==
-          undefined
-            ? Number(
-                preco_custo,
-              )
+          preco_custo !== undefined
+            ? Number(preco_custo)
             : produto.preco_custo,
 
         preco_venda:
-          preco_venda !==
-          undefined
-            ? Number(
-                preco_venda,
-              )
+          preco_venda !== undefined
+            ? Number(preco_venda)
             : produto.preco_venda,
 
         estoque:
-          estoque !==
-          undefined
-            ? Number(
-                estoque,
-              )
+          estoque !== undefined
+            ? Number(estoque)
             : produto.estoque,
 
         estoque_minimo:
-          estoque_minimo !==
-          undefined
-            ? Number(
-                estoque_minimo,
-              )
+          estoque_minimo !== undefined
+            ? Number(estoque_minimo)
             : produto.estoque_minimo,
 
         ativo:
-          ativo !==
-          undefined
-            ? Boolean(
-                ativo,
-              )
+          ativo !== undefined
+            ? Boolean(ativo)
             : produto.ativo,
       });
 
@@ -1645,8 +1705,6 @@ app.put(
     }
   },
 );
-
-// Excluir produto
 
 app.delete(
   "/produtos/:id",
@@ -1668,8 +1726,7 @@ app.delete(
       const vendas =
         await Venda.count({
           where: {
-            produto_id:
-              produto.id,
+            produto_id: produto.id,
           },
         });
 
@@ -1700,11 +1757,11 @@ app.delete(
   },
 );
 
-// ============================================================
-// VENDAS
-// ============================================================
-
-// Listar vendas
+/*
+============================================================
+VENDAS
+============================================================
+*/
 
 app.get(
   "/vendas",
@@ -1716,16 +1773,11 @@ app.get(
           include: [
             {
               model: Produto,
-              attributes: [
-                "id",
-                "nome",
-              ],
+              attributes: ["id", "nome"],
             },
           ],
 
-          order: [
-            ["data", "DESC"],
-          ],
+          order: [["data", "DESC"]],
         });
 
       res.json(vendas);
@@ -1736,14 +1788,11 @@ app.get(
       );
 
       res.status(500).json({
-        error:
-          "Erro ao listar vendas.",
+        error: "Erro ao listar vendas.",
       });
     }
   },
 );
-
-// Registrar venda
 
 app.post(
   "/vendas",
@@ -1766,15 +1815,12 @@ app.post(
   ],
 
   async (req, res) => {
-    const errors =
-      validationResult(req);
+    const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        error:
-          "Erro de validação.",
-        details:
-          errors.array(),
+        error: "Erro de validação.",
+        details: errors.array(),
       });
     }
 
@@ -1803,13 +1849,11 @@ app.post(
         });
       }
 
-      const qtd =
-        Number(quantidade);
+      const qtd = Number(
+        quantidade,
+      );
 
-      if (
-        produto.estoque <
-        qtd
-      ) {
+      if (produto.estoque < qtd) {
         return res.status(400).json({
           error:
             `Estoque insuficiente. Estoque atual: ${produto.estoque}.`,
@@ -1826,26 +1870,18 @@ app.post(
 
       const venda =
         await Venda.create({
-          produto_id:
-            produto.id,
-
-          quantidade:
-            qtd,
-
+          produto_id: produto.id,
+          quantidade: qtd,
           valor_unitario:
             valorUnitario,
-
           valor_total:
             valorTotal,
-
-          data:
-            new Date(),
+          data: new Date(),
         });
 
       await produto.update({
         estoque:
-          produto.estoque -
-          qtd,
+          produto.estoque - qtd,
       });
 
       const vendaCompleta =
@@ -1881,11 +1917,11 @@ app.post(
   },
 );
 
-// ============================================================
-// DESPESAS
-// ============================================================
-
-// Listar despesas
+/*
+============================================================
+DESPESAS
+============================================================
+*/
 
 app.get(
   "/despesas",
@@ -1894,9 +1930,7 @@ app.get(
     try {
       const despesas =
         await Despesa.findAll({
-          order: [
-            ["data", "DESC"],
-          ],
+          order: [["data", "DESC"]],
         });
 
       res.json(despesas);
@@ -1907,14 +1941,11 @@ app.get(
       );
 
       res.status(500).json({
-        error:
-          "Erro ao listar despesas.",
+        error: "Erro ao listar despesas.",
       });
     }
   },
 );
-
-// Cadastrar despesa
 
 app.post(
   "/despesas",
@@ -1936,15 +1967,12 @@ app.post(
   ],
 
   async (req, res) => {
-    const errors =
-      validationResult(req);
+    const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        error:
-          "Erro de validação.",
-        details:
-          errors.array(),
+        error: "Erro de validação.",
+        details: errors.array(),
       });
     }
 
@@ -1963,11 +1991,10 @@ app.post(
           categoria:
             categoria || null,
 
-          valor:
-            Number(valor),
+          valor: Number(valor),
 
           data: data
-            ? new Date(data)
+            ? dataCivilParaDate(data)
             : new Date(),
         });
 
@@ -1987,8 +2014,6 @@ app.post(
     }
   },
 );
-
-// Excluir despesa
 
 app.delete(
   "/despesas/:id",
@@ -2027,9 +2052,11 @@ app.delete(
   },
 );
 
-// ============================================================
-// FINANCEIRO
-// ============================================================
+/*
+============================================================
+FINANCEIRO
+============================================================
+*/
 
 app.get(
   "/financeiro",
@@ -2041,25 +2068,17 @@ app.get(
         fim: fimMes,
       } = intervaloDoMes();
 
-      // ======================================================
-      // VENDAS DE PRODUTOS
-      // ======================================================
-
       const vendas =
         await Venda.findAll({
           where: {
             data: {
               [Op.between]: [
-                `${inicioMes} 00:00:00`,
-                `${fimMes} 23:59:59`,
+                inicioMes,
+                fimMes,
               ],
             },
           },
         });
-
-      // ======================================================
-      // SERVIÇOS CONCLUÍDOS
-      // ======================================================
 
       const agendamentosConcluidos =
         await Agendamento.findAll({
@@ -2075,35 +2094,24 @@ app.get(
           },
         });
 
-      // ======================================================
-      // DESPESAS
-      // ======================================================
-
       const despesas =
         await Despesa.findAll({
           where: {
             data: {
               [Op.between]: [
-                `${inicioMes} 00:00:00`,
-                `${fimMes} 23:59:59`,
+                inicioMes,
+                fimMes,
               ],
             },
           },
         });
 
-      let faturamentoProdutos =
-        0;
+      let faturamentoProdutos = 0;
+      let custoProdutos = 0;
 
-      let custoProdutos =
-        0;
-
-      for (
-        const venda of vendas
-      ) {
+      for (const venda of vendas) {
         faturamentoProdutos +=
-          Number(
-            venda.valor_total,
-          );
+          Number(venda.valor_total);
 
         const produto =
           await Produto.findByPk(
@@ -2121,8 +2129,7 @@ app.get(
         }
       }
 
-      let faturamentoServicos =
-        0;
+      let faturamentoServicos = 0;
 
       for (
         const agendamento of
@@ -2135,16 +2142,14 @@ app.get(
           );
       }
 
-      let totalDespesas =
-        0;
+      let totalDespesas = 0;
 
       for (
         const despesa of despesas
       ) {
-        totalDespesas +=
-          Number(
-            despesa.valor,
-          );
+        totalDespesas += Number(
+          despesa.valor,
+        );
       }
 
       const faturamentoTotal =
@@ -2159,19 +2164,13 @@ app.get(
         lucroBruto -
         totalDespesas;
 
-      // ======================================================
-      // ESTOQUE
-      // ======================================================
-
       const produtos =
         await Produto.findAll();
 
       let valorEstoque = 0;
       let quantidadeEstoque = 0;
 
-      for (
-        const produto of produtos
-      ) {
+      for (const produto of produtos) {
         valorEstoque +=
           Number(
             produto.preco_custo,
@@ -2252,33 +2251,27 @@ app.get(
   },
 );
 
-// ============================================================
-// 404
-// ============================================================
+/*
+============================================================
+404
+============================================================
+*/
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Rota não encontrada.",
+  });
+});
+
+/*
+============================================================
+ERRO GLOBAL
+============================================================
+*/
 
 app.use(
-  (req, res) => {
-    res.status(404).json({
-      error:
-        "Rota não encontrada.",
-    });
-  },
-);
-
-// ============================================================
-// ERRO INTERNO
-// ============================================================
-
-app.use(
-  (
-    err,
-    req,
-    res,
-    next,
-  ) => {
-    console.error(
-      err.stack,
-    );
+  (err, req, res, next) => {
+    console.error(err.stack);
 
     res.status(500).json({
       error:
@@ -2287,31 +2280,22 @@ app.use(
   },
 );
 
-// ============================================================
-// SERVIDOR
-// ============================================================
+/*
+============================================================
+SERVIDOR
+============================================================
+*/
 
-app.listen(
-  PORT,
-  () => {
-    console.log(
-      `Servidor rodando na porta ${PORT}`,
-    );
+app.listen(PORT, () => {
+  console.log(
+    `Servidor rodando na porta ${PORT}`,
+  );
 
-    console.log(
-      `Painel admin: http://localhost:${PORT}/admin.html`,
-    );
+  console.log(
+    `Timezone da aplicação: ${TIMEZONE}`,
+  );
 
-    console.log(
-      `Data atual Brasil: ${getDataAtualBrasil()}`,
-    );
-
-    console.log(
-      `Timezone do processo Node: ${
-        Intl.DateTimeFormat()
-          .resolvedOptions()
-          .timeZone
-      }`,
-    );
-  },
-);
+  console.log(
+    `Painel admin: http://localhost:${PORT}/admin.html`,
+  );
+});
