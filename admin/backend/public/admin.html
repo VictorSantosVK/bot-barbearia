@@ -1317,17 +1317,36 @@
         el.className = `status ${tipo}`;
       }
 
+      /* O backend guarda agendamento.data como DATEONLY ("YYYY-MM-DD"
+         puro, sem hora). new Date("YYYY-MM-DD") é interpretado pelo JS
+         como meia-noite UTC — e ao formatar no fuso do navegador
+         (Brasil, -03:00) isso "volta" um dia. Por isso, strings de
+         data pura são montadas manualmente a partir dos componentes
+         (ano/mês/dia) direto no fuso local, sem passar pelo parser
+         UTC. Timestamps completos (Venda.data, Despesa.data) continuam
+         usando o parser normal — ali a conversão UTC -> fuso do
+         navegador é o comportamento certo. */
+      function parseDataCalendario(valor) {
+        if (!valor) return null;
+        if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+          const [ano, mes, dia] = valor.split("-").map(Number);
+          return new Date(ano, mes - 1, dia);
+        }
+        const d = new Date(valor);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
       function formatarDataBR(data) {
-        if (!data) return "--/--/----";
-        const date = new Date(data);
-        if (isNaN(date.getTime())) return "--/--/----";
+        const date = parseDataCalendario(data);
+        if (!date) return "--/--/----";
         return date.toLocaleDateString("pt-BR");
       }
 
       function dataParaInput(data) {
         if (!data) return "";
-        const date = new Date(data);
-        if (isNaN(date.getTime())) return "";
+        if (typeof data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
+        const date = parseDataCalendario(data);
+        if (!date) return "";
         const ano = date.getFullYear();
         const mes = String(date.getMonth() + 1).padStart(2, "0");
         const dia = String(date.getDate()).padStart(2, "0");
@@ -1785,7 +1804,7 @@
         dado inventado.
         ========================================================= */
       function dataHoraCompleta(ag) {
-        const d = new Date(ag.data);
+        const d = parseDataCalendario(ag.data) || new Date(NaN);
         if (ag.horario) {
           const [h, m] = ag.horario.split(":");
           d.setHours(Number(h) || 0, Number(m) || 0, 0, 0);
@@ -1794,7 +1813,7 @@
       }
 
       function apenasData(d) {
-        const x = new Date(d);
+        const x = parseDataCalendario(d) || new Date(NaN);
         x.setHours(0, 0, 0, 0);
         return x;
       }
@@ -2221,8 +2240,8 @@
         lista
           .filter((a) => noIntervalo(a.data, inicioMes, fimMes))
           .forEach((a) => {
-            const d = new Date(a.data);
-            if (!isNaN(d.getTime())) contagem[d.getDay()] += 1;
+            const d = parseDataCalendario(a.data);
+            if (d) contagem[d.getDay()] += 1;
           });
 
         if (chartAgendamentosRef) chartAgendamentosRef.destroy();
@@ -2283,12 +2302,8 @@
 
         const contagemPorDia = {};
         lista.forEach((a) => {
-          const d = new Date(a.data);
-          if (
-            !isNaN(d.getTime()) &&
-            d.getFullYear() === ano &&
-            d.getMonth() === mes
-          ) {
+          const d = parseDataCalendario(a.data);
+          if (d && d.getFullYear() === ano && d.getMonth() === mes) {
             const dia = d.getDate();
             contagemPorDia[dia] = (contagemPorDia[dia] || 0) + 1;
           }

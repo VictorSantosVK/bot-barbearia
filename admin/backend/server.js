@@ -230,23 +230,24 @@ function formatarHorarioParaBanco(horario) {
 
 /**
  * Obtém a data atual no horário de São Paulo como YYYY-MM-DD.
- * Usa Intl.DateTimeFormat com timeZone explícito — não depende
- * do fuso do processo/SO, funciona igual em qualquer servidor.
+ *
+ * IMPORTANTE: NÃO usa Intl.DateTimeFormat({ timeZone: ... }).
+ * Builds de Node com "small-icu" (comum em VPS/Docker mínimos)
+ * não têm o banco de fusos IANA completo e lançam RangeError
+ * ("Invalid time zone specified") ao tentar resolver um fuso
+ * pelo nome — foi exatamente isso que derrubou /dashboard em
+ * produção. Em vez disso, aplicamos um offset fixo de -03:00
+ * na mão: o Brasil não usa mais horário de verão desde 2019,
+ * então isso é sempre exato e nunca depende de tzdata/ICU.
  */
+const OFFSET_BRASIL_MS = 3 * 60 * 60 * 1000;
+
 function dataAtualSaoPaulo() {
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-
-  const valores = {};
-  for (const parte of partes) {
-    if (parte.type !== "literal") valores[parte.type] = parte.value;
-  }
-
-  return `${valores.year}-${valores.month}-${valores.day}`;
+  const agora = new Date(Date.now() - OFFSET_BRASIL_MS);
+  const ano = agora.getUTCFullYear();
+  const mes = String(agora.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getUTCDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
 }
 
 /**
@@ -280,8 +281,6 @@ function intervaloDoMesString() {
  * Venda.data / Despesa.data, que são DATE/DATETIME de verdade.
  * Meia-noite em São Paulo (-03:00) equivale a 03:00 UTC.
  */
-const OFFSET_BRASIL_MS = 3 * 60 * 60 * 1000;
-
 function limitesDoMesUTC() {
   const { inicio: inicioStr, fim: fimStr } = intervaloDoMesString();
 
